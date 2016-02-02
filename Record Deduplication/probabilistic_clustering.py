@@ -32,8 +32,6 @@ except ImportError as e:
     print("Error importing Spark Modules", e)
     sys.exit(1)
 
-
-
 if __name__ =='__main__':
     # sc = SparkContext(appName="DIG-TFIDF")
     # rl = RecordLinker()
@@ -61,6 +59,7 @@ if __name__ =='__main__':
     print(rec2)
     print(reformatRecord2Entity(rec2))
     print(recordSimilarity(rec, rec))
+    # exit(0)
     sc = SparkContext(appName="DIG-TFIDF")
     sqlContext = SQLContext(sc)
     # sc.broadcast(rl)
@@ -73,14 +72,22 @@ if __name__ =='__main__':
     # converting mentions to records
     res = canopies.map(lambda x: [Row(tokens=getAllTokens(xx.value, 2, priorDicts), uri=xx.uri) for xx in x])
     res = res.map(lambda x: [Row(entities=reformatRecord2Entity(xx.tokens), uri=xx.uri) for xx in x])
+
+    # pp = res.collect()
+    # for xx in pp:
+    #     print(clusterCanopies(xx))
+    #     exit(0)
+
+    # res = res.zipWithIndex().filter(_._2<5).map(_._1).first()
     res = res.map(lambda x: clusterCanopies(x))
+    res = res.map(lambda x: convertToJson(x))
     # res = sc.runJob(res,lambda x: rl.clusterCanopies(x))
     # res = sc.parallelize(res)
     # res = rl.temp(res)
 
     # res = canopies.map(lambda x: rl.convertMentionToEntities(x))
-    # res.saveAsTextFile("temp")
-    res.foreach(lambda x: print(x))
+    res.saveAsTextFile("../temp2")
+    # res.foreach(lambda x: print(x))
 
     # todo: cluster the elements in the candidates
     # canopies.map(lambda x: rl.clusterCanopies())

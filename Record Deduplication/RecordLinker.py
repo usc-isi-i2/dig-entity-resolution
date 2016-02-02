@@ -247,6 +247,7 @@ def scoreCandidates(entry):
 
 def reformatRecord2EntityHelper(record, covered=set()):
     record = [r for r in record if not any(x in covered for x in r['covers'])]
+    # print(record)
     entities = []
     if len(record) == 0:
         return [{}]
@@ -270,11 +271,16 @@ def reformatRecord2EntityHelper(record, covered=set()):
                 else:
                     entity.update({tag:[f['value']]})
             entities += peCopy
+    if len(entities) == 0:
+        return [{}]
     return entities
 
 
 def reformatRecord2Entity(record):
-    return reformatRecord2EntityHelper(record)
+    res = reformatRecord2EntityHelper(record)
+    if res == [{}]:
+        return []
+    return res
 
 
 def entitySimilarityDict(e1, e2, sdicts): # sdicts are created on canopy
@@ -336,6 +342,9 @@ def recordSimilarity(r1, r2):
 
 
 def entityRepresentationsSimilarity(r1entities, r2entities):
+    # print("here!!")
+    # print(r1entities)
+    # print(r2entities)
     if r1entities == None or r2entities == None:
         return 0, 0, 0
     if len(r1entities) == 0 or len(r2entities) == 0:
@@ -350,6 +359,9 @@ def entityRepresentationsSimilarity(r1entities, r2entities):
                 r1_best = r1_i
                 r2_best = r2_i
                 score = tempscore
+    # print(r1entities)
+    # print(r2entities)
+    # print("there!!!")
     return score, r1_best, r2_best
 
 
@@ -357,15 +369,30 @@ def clusterCanopiesHelper(canopy, firstIndex):
     if len(canopy) <= 1 or firstIndex >= len(canopy)-1:
         return canopy
     toberemoved = []
-    r = canopy[0]
-    for r2_i, r2 in enumerate(canopy[1:]):
-        score, b1, b2 = entityRepresentationsSimilarity(r.entities, r2.entities)
+    # r = canopy[firstIndex]
+    for r2_i, r2 in enumerate(canopy[firstIndex+1:]):
+        # print(r2)
+        # print(r2.entities)
+        score, b1, b2 = entityRepresentationsSimilarity(canopy[firstIndex].entities, r2.entities)
+        # print(str(canopy[firstIndex].uris) + " " + str(r2.uris) + " " + str(score) + " " + str(canopy[firstIndex].entities) + " " + str(r2.entities))
         if score > mergeThreshold:
-            canopy[0] = Row(uris=canopy[0].uris+r2.uris,
-                            entities=mergeEntityRepresentations(r.entities, r2.entities, b1, b2))
-            toberemoved.append(r2_i+1)
+            # print(r.entities)
+            # print(r2.entities)
+            # print(b1)
+            # print(b2)
+            # print(mergeEntityRepresentations(r.entities, r2.entities, b1, b2))
+            canopy[firstIndex] = Row(uris=canopy[firstIndex].uris+r2.uris,
+                            entities=mergeEntityRepresentations(canopy[firstIndex].entities, r2.entities, b1, b2))
+            toberemoved.append(r2_i+1+firstIndex)
+    # print(toberemoved)
     return [i for j, i in enumerate(canopy) if j not in toberemoved]
 
+def convertToJson(xx):
+    clusters = []
+    for row in xx:
+        clusters.append({'entities': row.entities,
+                         'uris': row.uris})
+    return json.dumps({'cluster': clusters})
 
 def clusterCanopies(canopy): # canopy contains several entity like presented records
     # canopy = copy.deepcopy(canopy)
@@ -374,20 +401,29 @@ def clusterCanopies(canopy): # canopy contains several entity like presented rec
         res.append(Row(uris=[r.uri], entities=r.entities))
 
     for i in range(len(canopy)):
+        # print(str(convertToJson(res)))
         res = clusterCanopiesHelper(res, i)
+    # print('\n\n\n')
     return res
 
 
 def mergeEntityRepresentations(rep1, rep2, index1, index2):
+    # print(str(rep1) + " " + str(rep2) + " " + str(index1) + " " + str(index2))
     if len(rep1) == 0 or len(rep2) == 0:
         return rep1+rep2
-    rep1 = copy.copy(rep1)
-    rep2 = copy.copy(rep2)
+    # rep1 = copy.copy(rep1)
+    # rep2 = copy.copy(rep2)
     ent1 = rep1[index1]
     ent2 = rep2[index2]
     del(rep1[index1])
     del(rep2[index2])
-    return (rep1+rep2).append(mergeEntities(ent1,ent2))
+    if rep1 is None:
+        rep1 = []
+    if rep2 is None:
+        rep2 = []
+    newrep = (rep1+rep2)
+    newrep.append(mergeEntities(ent1,ent2))
+    return newrep
 
 
 def mergeEntities(ent1, ent2):
