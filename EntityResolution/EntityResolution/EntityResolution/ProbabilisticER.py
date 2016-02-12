@@ -253,7 +253,9 @@ def reformatRecord2EntityHelper(record, covered=set()):
         return [{}]
     if len(record) == 1:
         for tag in record[0]['tags']:
-            entities.append({tag:set(record[0]['value'])})
+            entity = {tag: set()}
+            entity[tag].add(record[0]['value'])
+            entities.append(entity)
         if len(entities) == 0:
             return [{}]
         return entities
@@ -269,20 +271,30 @@ def reformatRecord2EntityHelper(record, covered=set()):
                 if tag in entity:
                     entity[tag].add(f['value'])
                 else:
-                    entity.update({tag:set(f['value'])})
+                    entity.update({tag: set()})
+                    entity[tag].add(f['value'])
             entities += peCopy
     if len(entities) == 0:
         return [{}]
     return entities
 
 
+
 def reformatRecord2Entity(record):
     res = reformatRecord2EntityHelper(record)
     if res == [{}]:
         return []
-    for entity in res:
-        for key, val in entity.items():
-            entity[key] = list(val)
+    seen = []
+    res = [x for x in res if not (x in seen or seen.append(x))]
+    # newres = set()
+    # for entity in res:
+    #     newres.add(str(entity))
+    # res = []
+    # for entity in newres:
+    #     res.append(eval(entity))
+    # for entity in res:
+    #     for key, val in entity.items():
+    #         entity[key] = list(val)
     return res
 
 
@@ -290,11 +302,17 @@ def entitySimilarityDict(e1, e2, sdicts): # sdicts are created on canopy
     score = 1.0
     for tag in e1: # let e1 be the entity and e2 be the mention
         if tag in e2:
-            score *= scoreFieldFromDict(sdicts, e2[tag], e1[tag], tag)
+            tempscore = 0
+            for xx in e1[tag]:
+                for yy in e2[tag]:
+                    temp = scoreFieldFromDict(sdicts, e2[tag], e1[tag], tag)
+                    if temp > tempscore:
+                        tempscore = temp
+            score *= tempscore
     for tag in (e1.keys() - e2.keys()):
-        score *= scoreFieldFromDict(sdicts, e1[tag], tag)
+        score *= scoreFieldFromDict(sdicts, next(iter(e1[tag])), tag)
     for tag in (e2.keys() - e1.keys()):
-        score *= scoreFieldFromDict(sdicts, e2[tag], tag)
+        score *= scoreFieldFromDict(sdicts, next(iter(e2[tag])), tag)
     return score
 
 
@@ -302,11 +320,17 @@ def entitySimilarity(e1, e2): # sdicts are created on canopy
     score = 1.0
     for tag in e1: # let e1 be the entity and e2 be the mention
         if tag in e2:
-            score *= scoreField(e2[tag], e1[tag], tag)
+            tempscore = 0
+            for xx in e1[tag]:
+                for yy in e2[tag]:
+                    temp = scoreField(xx, yy, tag)
+                    if temp > tempscore:
+                        tempscore = temp
+            score *= tempscore
     for tag in (e1.keys() - e2.keys()):
-        score *= scoreField(e1[tag], None, tag)
+        score *= scoreField(next(iter(e1[tag])), None, tag)
     for tag in (e2.keys() - e1.keys()):
-        score *= scoreField(e2[tag], None, tag)
+        score *= scoreField(next(iter(e2[tag])), None, tag)
     return score
 
 
@@ -355,6 +379,10 @@ def entityRepresentationsSimilarity(r1entities, r2entities):
     score = -1
     r1_best = -1
     r2_best = -1
+    # print(len(r1entities))
+    # print(len(r2entities))
+    # print(r1entities)
+    # print(r2entities)
     for r1_i, r1e in enumerate(r1entities):
         for r2_i, r2e in enumerate(r2entities):
             tempscore = entitySimilarity(r1e, r2e)
@@ -373,6 +401,7 @@ def clusterCanopiesHelper(canopy, firstIndex):
         return canopy
     toberemoved = []
     # r = canopy[firstIndex]
+    # print("first index is: " + str(firstIndex))
     for r2_i, r2 in enumerate(canopy[firstIndex+1:]):
         # print(r2)
         # print(r2.entities)
@@ -405,6 +434,7 @@ def clusterCanopies(canopy): # canopy contains several entity like presented rec
         res.append(Row(uris=[r.uri], entities=r.entities))
 
     for i in range(len(canopy)):
+        print("one iteration")
         # print(str(convertToJson(res)))
         res = clusterCanopiesHelper(res, i)
     # print('\n\n\n')
@@ -434,7 +464,7 @@ def mergeEntities(ent1, ent2):
     newEntity = {}
     for key in ent1:
         if key in ent2:
-            newEntity.update({key: ent1[key]+ent2[key]})
+            newEntity.update({key: ent1[key].union(ent2[key])})
         else:
             newEntity.update(({key: ent1[key]}))
     for key in ent2:
@@ -455,14 +485,17 @@ def areSameEntities(x, entity):
 
 def cleanClusterEntities(entities):
     newentitites = []
+    # for entity in entities:
+    #     flag = False
+    #     for x in newentitites:
+    #         if areSameEntities(x, entity):
+    #             flag = True
+    #     if not flag:
+    #         newentitites.append(entity)
     for entity in entities:
-        flag = False
-        for x in newentitites:
-            if areSameEntities(x, entity):
-                flag = True
-        if not flag:
-            newentitites.append(entity)
-    return newentitites
+        for tag, val in entity.items():
+            entity[tag] = list(val)
+    return entities
 
 
 def cleanCanopyClusters(canopy):
@@ -564,7 +597,7 @@ def dataDedup(queriesPath, outputPath, priorDicts):
     # resdump = res.collect()
     # for xx in resdump:
     #     clusterCanopies(xx)
-    exit(0)
+    # exit(0)
     res = res.map(lambda x: clusterCanopies(x))
     res = res.map(lambda x: cleanCanopyClusters(x))
     # converting to json format for readability
@@ -573,7 +606,13 @@ def dataDedup(queriesPath, outputPath, priorDicts):
     res.saveAsTextFile(outputPath)
 
 if __name__ == "__main__":
+
+
     priorDictsFile = open("priorDicts.json", 'w')
     priorDictsFile.write(json.dumps(createGeonameDicts("../../../GeoNamesReferenceSet.json")))
+    priorDictsFile.close()
     priorDicts = json.load(open("priorDicts.json"))
+    # print(reformatRecord2Entity(getAllTokens("san francisco california united states", 2, priorDicts)))
+    # print(getAllTokens("san francisco california united states", 2, priorDicts))
+    # exit(0)
     dataDedup(sys.argv[1], sys.argv[2], priorDicts)

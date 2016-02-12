@@ -156,6 +156,8 @@ class TFIDFMatching:
         # outputfile = open(self.outPath, 'w')
         # res.rdd.foreach(lambda x: print(str(x.data.value) + " " + str(x.candidate)))
         # res.rdd.saveAsSequenceFile(self.outPath)
+        # res = res.rdd.zipWithIndex().filter(lambda x: x[1]<1).map(lambda x: x[0]).toDF()
+
         res.saveAsParquetFile(self.outPath)
         # .map(lambda x: (x.data.label, x))
         # for x in allCandidates:
