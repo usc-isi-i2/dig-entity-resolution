@@ -537,13 +537,13 @@ def temp(x):
     print(x)
     return ""
 
-def recordLinkage(sc, queriesPath, outputPath, priorDicts, readFromFile=True):
+def recordLinkage(sc, queryDocuments, outputPath, priorDicts, readFromFile=True):
     if readFromFile:
         queries = readQueriesFromFile(sc, priorDicts)
     else:
         # temp = Row(uri="", value="blah", record=Row(city="", state="")).copy()
         # temp['candidates'] = blah
-        queries = faerie.runOnSpark("sampledictionary.json","sampledocuments.json","sampleconfig.json")
+        queries = faerie.runOnSpark("sampledictionary.json",queryDocuments,"sampleconfig.json")
         queries = queries.map(lambda x: Row(uri=x.uri,
                                                value=x.value,
                                                record=getAllTokens(x.value, 3, priorDicts),
@@ -627,4 +627,4 @@ if __name__ == "__main__":
     # print(getAllTokens("san francisco california united states", 2, priorDicts))
     # exit(0)
     # dataDedup(sc, sys.argv[1], sys.argv[2], priorDicts)
-    recordLinkage(sc, sys.argv[1], sys.argv[2], priorDicts)
+    recordLinkage(sc, sys.argv[1], sys.argv[2], priorDicts, False)
