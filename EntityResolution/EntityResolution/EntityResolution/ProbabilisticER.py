@@ -537,19 +537,24 @@ def temp(x):
     print(x)
     return ""
 
-def recordLinkage(sc, queryDocuments, outputPath, priorDicts, readFromFile=True):
-    if readFromFile:
-        queries = readQueriesFromFile(sc, priorDicts)
-    else:
+def recordLinkage(queryDocuments, outputPath, priorDicts, readFromFile=True):
+
+    if not readFromFile:
         # temp = Row(uri="", value="blah", record=Row(city="", state="")).copy()
         # temp['candidates'] = blah
-        queries = faerie.runOnSpark("sampledictionary.json",queryDocuments,"sampleconfig.json")
+        queries = faerie.runOnSpark(sys.argv[4],queryDocuments,sys.argv[3])
         queries = queries.map(lambda x: Row(uri=x.uri,
                                                value=x.value,
                                                record=getAllTokens(x.value, 3, priorDicts),
                                                candidates=x.matches))
         # queries.saveAsTextFile("temp2")
         # exit(0)
+    sc = SparkContext(appName="DIG-EntityResolution")
+    sc.broadcast(EV)
+    sc.broadcast(priorDicts)
+
+    if readFromFile:
+        queries = readQueriesFromFile(sc, priorDicts)
 
     result = queries.map(lambda x: scoreCandidates(x))
     result = result.map(lambda x: json.dumps({'uri': x.uri,
@@ -610,7 +615,6 @@ if __name__ == "__main__":
         print("Error importing Spark Modules", e)
         sys.exit(1)
 
-    sc = SparkContext(appName="DIG-EntityResolution")
     priorDictsFile = open("priorDicts.json", 'w')
     priorDictsFile.write(json.dumps(createGeonameDicts("../../../GeoNamesReferenceSet.json")))
     priorDictsFile.close()
@@ -620,11 +624,11 @@ if __name__ == "__main__":
     EV.outputPath = sys.argv[2]
     EV.queriesPath = sys.argv[1]
     # print(EV.attributes)
-    sc.broadcast(EV)
+    # sc.broadcast(EV)
     # priorDicts = json.load(priorDictsPath)
-    sc.broadcast(priorDicts)
+    # sc.broadcast(priorDicts)
     # print(reformatRecord2Entity(getAllTokens("san francisco california united states", 2, priorDicts)))
     # print(getAllTokens("san francisco california united states", 2, priorDicts))
     # exit(0)
     # dataDedup(sc, sys.argv[1], sys.argv[2], priorDicts)
-    recordLinkage(sc, sys.argv[1], sys.argv[2], priorDicts, False)
+    recordLinkage(sys.argv[1], sys.argv[2], priorDicts, False)
