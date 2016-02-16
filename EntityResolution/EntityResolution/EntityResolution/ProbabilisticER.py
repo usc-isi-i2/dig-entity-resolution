@@ -4,48 +4,27 @@ import copy
 import os
 import sys
 import json
+import faerie
 
 from Toolkit import *
-
-os.environ['PYSPARK_PYTHON'] = "python3"
-os.environ['PYSPARK_DRIVER_PYTHON'] = "python3"
-sparkPath = '/Users/majid/Downloads/spark-1.5.2/'
-os.environ['SPARK_HOME'] = sparkPath
-os.environ['_JAVA_OPTIONS'] = "-Xmx12288m"
-sys.path.append(sparkPath+"python/")
-sys.path.append(sparkPath+"python/lib/py4j-0.8.2.1-src.zip")
-
-try:
-    from pyspark import SparkContext
-    from pyspark import SQLContext
-    from pyspark import SparkConf
-    from pyspark.ml.feature import HashingTF
-    from pyspark.ml.feature import IDF
-    from pyspark.ml.feature import Word2Vec
-    from pyspark.ml.feature import Tokenizer
-    from pyspark.sql import Row
-
-
-except ImportError as e:
-    print("Error importing Spark Modules", e)
-    sys.exit(1)
 
 
 global EV
 
 class EnvVariables:
-    outputPath = "/Users/majid/Dropbox/ISI/dig-entity-resolution/testmatched3"
-    queriesPath = "/Users/majid/Dropbox/ISI/dig-entity-resolution/ht-sample-locations.clustered.json"
+    outputPath = ""
+    queriesPath = ""
     priorDictsPath = ""
     attributes = {}
     allTags = ["UNK"]
     similarityDicts = []
     RecordLeftoverPenalty = 0.7
     mergeThreshold = 0.5
+    sparkPath = ""
 
 def readEnvConfig(cpath):
     jobject = json.loads(open(cpath).read())
-    # outputPath = jobject['out_path']
+    EV.sparkPath = jobject['spark_path']
 
 def readAttrConfig(cpath):
     with open(cpath) as cfile:
@@ -68,6 +47,7 @@ def RLInit():
     # global EV
     EV.similarityDicts = [{} for xx in EV.allTags]
     readAttrConfig("attr_config.json")
+    readEnvConfig("env_config.json")
     EV.RecordLeftoverPenalty = 0.7
     EV.mergeThreshold = 0.5
     return ""
@@ -233,16 +213,14 @@ def readQueriesFromFile(sparkContext, priorDicts):
 
 
 def scoreCandidates(entry):
-    # # todo: remove this and find a better way!
-    # RLInit()
-
     sdicts = createEntrySimilarityDicts(entry)
     matching = []
+    # todo: createEntity is for geoname domain only
     for candidate in entry.candidates:
         score = scoreRecordEntity(entry.record, createEntity(str(candidate.value)), sdicts)
         matching.append(Row(value=str(candidate.value), score=float("{0:.4f}".format(score)), uri=str(candidate.uri)))
     matching.sort(key=lambda tup: tup.score, reverse=True)
-    return Row(uri=entry.uri, value=entry.value, matches=matching)
+    return Row(uri=entry.uri, value=entry.value, matches=matching[:1])
 
 
 def reformatRecord2EntityHelper(record, covered=set()):
@@ -309,9 +287,9 @@ def entitySimilarityDict(e1, e2, sdicts): # sdicts are created on canopy
                     if temp > tempscore:
                         tempscore = temp
             score *= tempscore
-    for tag in (e1.keys() - e2.keys()):
+    for tag in (set(e1.keys()) - set(e2.keys())):
         score *= scoreFieldFromDict(sdicts, next(iter(e1[tag])), tag)
-    for tag in (e2.keys() - e1.keys()):
+    for tag in (set(e2.keys()) - set(e1.keys())):
         score *= scoreFieldFromDict(sdicts, next(iter(e2[tag])), tag)
     return score
 
@@ -327,9 +305,9 @@ def entitySimilarity(e1, e2): # sdicts are created on canopy
                     if temp > tempscore:
                         tempscore = temp
             score *= tempscore
-    for tag in (e1.keys() - e2.keys()):
+    for tag in (set(e1.keys()) - set(e2.keys())):
         score *= scoreField(next(iter(e1[tag])), None, tag)
-    for tag in (e2.keys() - e1.keys()):
+    for tag in (set(e2.keys()) - set(e1.keys())):
         score *= scoreField(next(iter(e2[tag])), None, tag)
     return score
 
@@ -555,38 +533,36 @@ def cleanCanopyClusters(canopy):
 #
 # def clusterCanopies(RecordLinker, canopies, )
 
-def recordLinkage(queriesPath, outputPath, priorDicts):
-    sc = SparkContext(appName="DIG-TFIDF")
-    global EV
-    EV = EnvVariables()
-    EV.outputPath = outputPath
-    EV.queriesPath = queriesPath
-    # EV.priorDictsPath = priorDictsPath
+def temp(x):
+    print(x)
+    return ""
 
-    # RecordLinker.EV = EnvVariables()
-    RLInit()
-    # print(EV.attributes)
-    sc.broadcast(EV)
-    # priorDicts = json.load(priorDictsPath)
-    sc.broadcast(priorDicts)
-    queries = readQueriesFromFile(sc, priorDicts)
+def recordLinkage(sc, queriesPath, outputPath, priorDicts, readFromFile=True):
+    if readFromFile:
+        queries = readQueriesFromFile(sc, priorDicts)
+    else:
+        # temp = Row(uri="", value="blah", record=Row(city="", state="")).copy()
+        # temp['candidates'] = blah
+        queries = faerie.runOnSpark("sampledictionary.json","sampledocuments.json","sampleconfig.json")
+        queries = queries.map(lambda x: Row(uri=x.uri,
+                                               value=x.value,
+                                               record=getAllTokens(x.value, 3, priorDicts),
+                                               candidates=x.matches))
+        # queries.saveAsTextFile("temp2")
+        # exit(0)
 
-    result = queries.map(lambda x: scoreCandidates(x)).toDF()
-    result.printSchema()
-    result.rdd.saveAsTextFile(EV.outputPath)
+    result = queries.map(lambda x: scoreCandidates(x))
+    result = result.map(lambda x: json.dumps({'uri': x.uri,
+                                              'value': x.value,
+                                              'matches': [{'uri': xx.uri,
+                                                           'value': xx.value,
+                                                           'score': xx.score} for xx in x.matches]}))
+    # result.printSchema()
+    result.saveAsTextFile(outputPath)
 
-def dataDedup(queriesPath, outputPath, priorDicts):
-    sc = SparkContext(appName="DIG-TFIDF")
+def dataDedup(sc, queriesPath, outputPath, priorDicts):
     sqlContext = SQLContext(sc)
-    global EV
-    EV = EnvVariables()
-    EV.outputPath = outputPath
-    EV.queriesPath = queriesPath
-    # EV.priorDictsPath = priorDictsPath
-    sc.broadcast(EV)
-    RLInit()
-    # priorDicts = json.load(open(priorDictsPath))
-
+    # global EV
     canopies = sqlContext.parquetFile(queriesPath)
     canopies = canopies.map(lambda x: x.candidate)
     # converting mentions to records
@@ -606,13 +582,49 @@ def dataDedup(queriesPath, outputPath, priorDicts):
     res.saveAsTextFile(outputPath)
 
 if __name__ == "__main__":
+    global EV
+    EV = EnvVariables()
+    RLInit()
 
 
+    os.environ['PYSPARK_PYTHON'] = "python2.7"
+    os.environ['PYSPARK_DRIVER_PYTHON'] = "python2.7"
+    # sparkPath = '/Users/majid/Downloads/spark-1.5.2/'
+    os.environ['SPARK_HOME'] = EV.sparkPath
+    os.environ['_JAVA_OPTIONS'] = "-Xmx12288m"
+    sys.path.append(EV.sparkPath+"python/")
+    sys.path.append(EV.sparkPath+"python/lib/py4j-0.8.2.1-src.zip")
+
+    try:
+        from pyspark import SparkContext
+        from pyspark import SQLContext
+        from pyspark import SparkConf
+        from pyspark.ml.feature import HashingTF
+        from pyspark.ml.feature import IDF
+        from pyspark.ml.feature import Word2Vec
+        from pyspark.ml.feature import Tokenizer
+        from pyspark.sql import Row
+
+
+    except ImportError as e:
+        print("Error importing Spark Modules", e)
+        sys.exit(1)
+
+    sc = SparkContext(appName="DIG-EntityResolution")
     priorDictsFile = open("priorDicts.json", 'w')
     priorDictsFile.write(json.dumps(createGeonameDicts("../../../GeoNamesReferenceSet.json")))
     priorDictsFile.close()
     priorDicts = json.load(open("priorDicts.json"))
+
+
+    EV.outputPath = sys.argv[2]
+    EV.queriesPath = sys.argv[1]
+    # print(EV.attributes)
+    sc.broadcast(EV)
+    # priorDicts = json.load(priorDictsPath)
+    sc.broadcast(priorDicts)
     # print(reformatRecord2Entity(getAllTokens("san francisco california united states", 2, priorDicts)))
     # print(getAllTokens("san francisco california united states", 2, priorDicts))
     # exit(0)
-    dataDedup(sys.argv[1], sys.argv[2], priorDicts)
+    # dataDedup(sc, sys.argv[1], sys.argv[2], priorDicts)
+    recordLinkage(sc, sys.argv[1], sys.argv[2], priorDicts)
