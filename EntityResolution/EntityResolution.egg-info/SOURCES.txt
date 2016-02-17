@@ -1,7 +1,0 @@
-README.rst
-setup.py
-EntityResolution/__init__.py
-EntityResolution.egg-info/PKG-INFO
-EntityResolution.egg-info/SOURCES.txt
-EntityResolution.egg-info/dependency_links.txt
-EntityResolution.egg-info/top_level.txt

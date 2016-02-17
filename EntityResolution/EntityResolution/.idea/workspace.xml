@@ -71,7 +71,7 @@
       <file leaf-file-name="tfidf_clustering.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/EntityResolution/tfidf_clustering.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="-14.0">
+            <state vertical-scroll-proportion="-56.77778">
               <caret line="164" column="40" selection-start-line="164" selection-start-column="40" selection-end-line="164" selection-end-column="40" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
@@ -80,11 +80,23 @@
           </provider>
         </entry>
       </file>
+      <file leaf-file-name="ReformatGeoNames.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/EntityResolution/ReformatGeoNames.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.0">
+              <caret line="20" column="34" selection-start-line="20" selection-start-column="22" selection-end-line="20" selection-end-column="34" />
+              <folding>
+                <element signature="e#0#11#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
       <file leaf-file-name="ProbabilisticER.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/EntityResolution/ProbabilisticER.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.7067669">
-              <caret line="556" column="53" selection-start-line="556" selection-start-column="53" selection-end-line="556" selection-end-column="53" />
+            <state vertical-scroll-proportion="0.2781955">
+              <caret line="552" column="8" selection-start-line="552" selection-start-column="8" selection-end-line="552" selection-end-column="8" />
               <folding>
                 <element signature="e#24#35#0" expanded="true" />
               </folding>
@@ -633,14 +645,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/EntityResolution/env_config.json">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-0.625">
-          <caret line="1" column="52" selection-start-line="1" selection-start-column="52" selection-end-line="1" selection-end-column="52" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/EntityResolution/Toolkit.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="-18.064516">
@@ -653,7 +657,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/EntityResolution/tfidf_clustering.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-14.0">
+        <state vertical-scroll-proportion="-56.77778">
           <caret line="164" column="40" selection-start-line="164" selection-start-column="40" selection-end-line="164" selection-end-column="40" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
@@ -661,10 +665,28 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/EntityResolution/env_config.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="-0.625">
+          <caret line="1" column="52" selection-start-line="1" selection-start-column="52" selection-end-line="1" selection-end-column="52" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/EntityResolution/ReformatGeoNames.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="20" column="34" selection-start-line="20" selection-start-column="22" selection-end-line="20" selection-end-column="34" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/EntityResolution/ProbabilisticER.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.7067669">
-          <caret line="556" column="53" selection-start-line="556" selection-start-column="53" selection-end-line="556" selection-end-column="53" />
+        <state vertical-scroll-proportion="0.2781955">
+          <caret line="552" column="8" selection-start-line="552" selection-start-column="8" selection-end-line="552" selection-end-column="8" />
           <folding>
             <element signature="e#24#35#0" expanded="true" />
           </folding>

@@ -538,22 +538,19 @@ def temp(x):
     return ""
 
 def recordLinkage(queryDocuments, outputPath, priorDicts, readFromFile=True):
-
-    if not readFromFile:
-        # temp = Row(uri="", value="blah", record=Row(city="", state="")).copy()
-        # temp['candidates'] = blah
-        queries = faerie.runOnSpark(sys.argv[4],queryDocuments,sys.argv[3])
-        queries = queries.map(lambda x: Row(uri=x.uri,
-                                               value=x.value,
-                                               record=getAllTokens(x.value, 3, priorDicts),
-                                               candidates=x.matches))
-        # queries.saveAsTextFile("temp2")
-        # exit(0)
     sc = SparkContext(appName="DIG-EntityResolution")
     sc.broadcast(EV)
     sc.broadcast(priorDicts)
-
-    if readFromFile:
+    if not readFromFile:
+        # temp = Row(uri="", value="blah", record=Row(city="", state="")).copy()
+        # temp['candidates'] = blah
+        queries = faerie.runOnSpark(sc, sys.argv[4],queryDocuments,sys.argv[3])
+        queries = queries.map(lambda x: Row(uri=x.document.id,
+                                               value=x.document.value,
+                                               record=getAllTokens(x.document.value, 3, priorDicts),
+                                               candidates=[Row(uri=xx.id,
+                                                               value=xx.value) for xx in x.entities]))
+    else:
         queries = readQueriesFromFile(sc, priorDicts)
 
     result = queries.map(lambda x: scoreCandidates(x))
@@ -598,7 +595,7 @@ if __name__ == "__main__":
     os.environ['SPARK_HOME'] = EV.sparkPath
     os.environ['_JAVA_OPTIONS'] = "-Xmx12288m"
     sys.path.append(EV.sparkPath+"python/")
-    sys.path.append(EV.sparkPath+"python/lib/py4j-0.8.2.1-src.zip")
+    sys.path.append(EV.sparkPath+"python/lib/py4j-0.9-src.zip")
 
     try:
         from pyspark import SparkContext
@@ -631,4 +628,5 @@ if __name__ == "__main__":
     # print(getAllTokens("san francisco california united states", 2, priorDicts))
     # exit(0)
     # dataDedup(sc, sys.argv[1], sys.argv[2], priorDicts)
+    # queries = faerie.runOnSpark(sys.argv[1],sys.argv[2],sys.argv[3])
     recordLinkage(sys.argv[1], sys.argv[2], priorDicts, False)
