@@ -4,7 +4,7 @@ import copy
 import os
 import sys
 import json
-import faerie
+import faerie1
 
 from Toolkit import *
 
@@ -64,9 +64,22 @@ def scoreFieldFromDict(sdicts, mentionField, entityField, tag, priorDicts={}):
     else:
         if EV.attributes[tag]['type'] == "string":
             ii = EV.allTags.index(tag)
-            key = entityField+mentionField
-            if key in sdicts[ii]:
-                score = sdicts[ii][key]
+            if type(mentionField) is set:
+                for s in mentionField:
+                    key = entityField+s
+                    if key in sdicts[ii]:
+                        if score < sdicts[ii][key]:
+                            score = sdicts[ii][key]
+            elif type(entityField) is set:
+                for s in entityField:
+                    key = s+mentionField
+                    if key in sdicts[ii]:
+                        if score < sdicts[ii][key]:
+                            score = sdicts[ii][key]
+            else:
+                key = entityField+mentionField
+                if key in sdicts[ii]:
+                    score = sdicts[ii][key]
     return score
 
 # todo: make it based on probabilities
@@ -151,8 +164,14 @@ def scoreRecordEntityHelper(sdicts, bestscore, branchscore, record=[], entity={}
     return bestscore
 
 
-def scoreRecordEntity(record, entity, similarityDicts):  # record and entity are the same json format
-    return scoreRecordEntityHelper(similarityDicts, 0.0, 1.0, record, entity, set())
+def scoreRecordEntity(recordEntities, entity, similarityDicts):  # record and entity are the same json format
+    print(recordEntities)
+    maxscore = 0
+    for recenttity in recordEntities:
+        score = entitySimilarityDict(recenttity, entity, similarityDicts)
+        if maxscore < score:
+            maxscore = score
+    return maxscore
 
 
 def createEntity(string):
@@ -215,9 +234,10 @@ def readQueriesFromFile(sparkContext, priorDicts):
 def scoreCandidates(entry):
     sdicts = createEntrySimilarityDicts(entry)
     matching = []
+    recordEntities = reformatRecord2Entity(entry.record)
     # todo: createEntity is for geoname domain only
     for candidate in entry.candidates:
-        score = scoreRecordEntity(entry.record, createEntity(str(candidate.value)), sdicts)
+        score = scoreRecordEntity(recordEntities, createEntity(str(candidate.value)), sdicts)
         matching.append(Row(value=str(candidate.value), score=float("{0:.4f}".format(score)), uri=str(candidate.uri)))
     matching.sort(key=lambda tup: tup.score, reverse=True)
     return Row(uri=entry.uri, value=entry.value, matches=matching[:1])
@@ -288,9 +308,17 @@ def entitySimilarityDict(e1, e2, sdicts): # sdicts are created on canopy
                         tempscore = temp
             score *= tempscore
     for tag in (set(e1.keys()) - set(e2.keys())):
-        score *= scoreFieldFromDict(sdicts, next(iter(e1[tag])), tag)
+        # if type(e1[tag]) is set:
+        #     score *= scoreFieldFromDict(sdicts, next(iter(e1[tag])), None, tag)
+        # else:
+        #     score *= scoreFieldFromDict(sdicts, e1[tag], None, tag)
+        score *= scoreFieldFromDict(sdicts, "***", None, tag)
     for tag in (set(e2.keys()) - set(e1.keys())):
-        score *= scoreFieldFromDict(sdicts, next(iter(e2[tag])), tag)
+        # if type(e2[tag]) is set:
+        #     score *= scoreFieldFromDict(sdicts, None, next(iter(e2[tag])), tag)
+        # else:
+        #     score *= scoreFieldFromDict(sdicts, None, e2[tag], tag)
+        score *= scoreFieldFromDict(sdicts, None, "***", tag)
     return score
 
 
@@ -544,22 +572,27 @@ def recordLinkage(queryDocuments, outputPath, priorDicts, readFromFile=True):
     if not readFromFile:
         # temp = Row(uri="", value="blah", record=Row(city="", state="")).copy()
         # temp['candidates'] = blah
-        queries = faerie.runOnSpark(sc, sys.argv[4],queryDocuments,sys.argv[3])
+        queries = faerie1.runOnSpark(sc, sys.argv[4],queryDocuments,sys.argv[3],1)
         queries = queries.map(lambda x: Row(uri=x.document.id,
                                                value=x.document.value,
-                                               record=getAllTokens(x.document.value, 3, priorDicts),
+                                               record=getAllTokens(x.document.value, 2, priorDicts),
                                                candidates=[Row(uri=xx.id,
                                                                value=xx.value) for xx in x.entities]))
     else:
         queries = readQueriesFromFile(sc, priorDicts)
 
+    # queries = queries.collect()
+    # for query in queries:
+    #     # print(query)
+    #     scoreCandidates(query)
     result = queries.map(lambda x: scoreCandidates(x))
     result = result.map(lambda x: json.dumps({'uri': x.uri,
                                               'value': x.value,
                                               'matches': [{'uri': xx.uri,
                                                            'value': xx.value,
-                                                           'score': xx.score} for xx in x.matches]}))
+                                                           'score': xx.score} for xx in x.matches[0:1]]}))
     # result.printSchema()
+    # print queries.first()
     result.saveAsTextFile(outputPath)
 
 def dataDedup(sc, queriesPath, outputPath, priorDicts):
@@ -613,7 +646,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     priorDictsFile = open("priorDicts.json", 'w')
-    priorDictsFile.write(json.dumps(createGeonameDicts("../../../GeoNamesReferenceSet.json")))
+    priorDictsFile.write(json.dumps(createGeonameDicts("us_cities.jl")))
     priorDictsFile.close()
     priorDicts = json.load(open("priorDicts.json"))
 

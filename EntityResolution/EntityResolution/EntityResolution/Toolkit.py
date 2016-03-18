@@ -1,6 +1,7 @@
 import sys
 import re
 import json
+import faerie1
 
 def createGeonameDicts(refPath):
     states = set()
@@ -9,18 +10,18 @@ def createGeonameDicts(refPath):
 
     for line in open(refPath):
         jsonobj = json.loads(line)
-        containedin = jsonobj['containedIn']
-        if 'State' in containedin:
-            states.add(containedin['State'].lower())
+        containedin = jsonobj['address']['addressRegion']
+        if "name" in containedin:
+            states.add(containedin['name'].lower())
             # print(containedin['State'])
-        if 'Country' in containedin:
-            countries.add(containedin['Country'].lower())
+        if "address" in containedin:
+            countries.add(containedin['address']['addressCountry']['name'].lower())
         if jsonobj['a'] == 'City':
             citites.add(jsonobj['name'].lower())
 
-    return {'city': {'names': list(citites), 'priors': [0 for x in citites]},
-            'state': {'names': list(states), 'priors': [0 for x in states]},
-            'country': {'names': list(countries), 'priors': [0 for x in countries]}}
+    return {'city': {x:0 for x in citites},
+            'state': {x:0 for x in states},
+            'country': {x:0 for x in countries}}
 
 def addURIS2HT(element = {}):
     baseURI = "https://digisi.usc.edu/ht_locations/"
@@ -187,9 +188,8 @@ def getAllTokens(string, T=-1, dicts={}):
                 continue
             # print(token)
             tags = []
-            for key, val in dicts.items():
-                if token in val['names']:
-                    tags.append(key)
+            if token.lower() in dicts["city"]:
+                tags.append("city")
             jobject = {"value": token, "id": id, "covers": covers, "tags": tags}
             alltokens.append(jobject)
             id -= 1
