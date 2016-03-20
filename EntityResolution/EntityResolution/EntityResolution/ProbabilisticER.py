@@ -165,7 +165,6 @@ def scoreRecordEntityHelper(sdicts, bestscore, branchscore, record=[], entity={}
 
 
 def scoreRecordEntity(recordEntities, entity, similarityDicts):  # record and entity are the same json format
-    print(recordEntities)
     maxscore = 0
     for recenttity in recordEntities:
         score = entitySimilarityDict(recenttity, entity, similarityDicts)
@@ -234,7 +233,9 @@ def readQueriesFromFile(sparkContext, priorDicts):
 def scoreCandidates(entry):
     sdicts = createEntrySimilarityDicts(entry)
     matching = []
-    recordEntities = reformatRecord2Entity(entry.record)
+    print("before effect!")
+    recordEntities = reformatRecord2Entity([x for x in entry.record if len(x['tags'])!=0])
+    print(recordEntities)
     # todo: createEntity is for geoname domain only
     for candidate in entry.candidates:
         score = scoreRecordEntity(recordEntities, createEntity(str(candidate.value)), sdicts)
@@ -581,19 +582,19 @@ def recordLinkage(queryDocuments, outputPath, priorDicts, readFromFile=True):
     else:
         queries = readQueriesFromFile(sc, priorDicts)
 
-    # queries = queries.collect()
-    # for query in queries:
-    #     # print(query)
-    #     scoreCandidates(query)
-    result = queries.map(lambda x: scoreCandidates(x))
-    result = result.map(lambda x: json.dumps({'uri': x.uri,
-                                              'value': x.value,
-                                              'matches': [{'uri': xx.uri,
-                                                           'value': xx.value,
-                                                           'score': xx.score} for xx in x.matches[0:1]]}))
+    queries = queries.collect()
+    for query in queries:
+        # print(query)
+        scoreCandidates(query)
+    # result = queries.map(lambda x: scoreCandidates(x))
+    # result = result.map(lambda x: json.dumps({'uri': x.uri,
+    #                                           'value': x.value,
+    #                                           'matches': [{'uri': xx.uri,
+    #                                                        'value': xx.value,
+    #                                                        'score': xx.score} for xx in x.matches[0:1]]}))
     # result.printSchema()
     # print queries.first()
-    result.saveAsTextFile(outputPath)
+    # result.saveAsTextFile(outputPath)
 
 def dataDedup(sc, queriesPath, outputPath, priorDicts):
     sqlContext = SQLContext(sc)
