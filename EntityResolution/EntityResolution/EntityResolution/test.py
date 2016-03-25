@@ -85,12 +85,8 @@ def processDoc(wholecities_dicts, dicts, line,f2):
     country = u"United States"
     country_can = faerie1.processDoc2(uri, country, dicts["countries_dict"], 1)
 
-    if state == None:
-        state = ""
-        states_can = None
-    else:
-        states_can = searchstate(country_can,uri,state,dicts,wholecities_dicts)
-    cities_can = searchcity(states_can,uri,city,dicts,wholecities_dicts,country)
+    cities_can = search(country_can,uri,state,dicts,wholecities_dicts,city)
+
     jsent = []
     for entity in cities_can.entities:
         eid = entity.id
@@ -98,6 +94,8 @@ def processDoc(wholecities_dicts, dicts, line,f2):
         temp = Row(id=eid,value=entity.value + ","+snc,start=entity.start,end=entity.end,score=entity.score)
         jsent.append(temp)
     # print cities_can
+    if state == None:
+        state = ""
     jsdoc = Row(id=cities_can.document.id,value=cities_can.document.value + ","+state+",United State")
     jsonline = Row(document=jsdoc,entities=jsent)
     # for key in cities_can["entities"]:
@@ -105,20 +103,25 @@ def processDoc(wholecities_dicts, dicts, line,f2):
 
     return jsonline
 
-def searchstate(country_can,uri,state,dicts,wholecities_dicts):
-    states_can = {}
-    if country_can and country_can != {} and country_can["entities"] != {}:
-        for country in country_can["entities"]:
-            try:
-                states_can["entities"] = dict(states_can["entities"],
+def search(country_can,uri,state,dicts,wholecities_dicts,city):
+    if state == None:
+        cities_can = searchcity(None,uri,city,dicts,wholecities_dicts,"")
+    else:
+        states_can = {}
+        if country_can and country_can != {} and country_can["entities"] != {}:
+            for country in country_can["entities"]:
+                try:
+                    states_can["entities"] = dict(states_can["entities"],
                                               **faerie1.processDoc2(uri, state, dicts[country]["states_dict"], 1)[
                                                   "entities"])
-            except KeyError:
-                states_can = faerie1.processDoc2(uri, state, dicts[country]["states_dict"], 1)
-    else:
-        country = u"http://www.geonames.org/6252001"
-        states_can = faerie1.processDoc2(uri, state, dicts[country]["states_dict"], 1)
-    return states_can
+                except KeyError:
+                    states_can = faerie1.processDoc2(uri, state, dicts[country]["states_dict"], 1)
+                cities_can = searchcity(states_can,uri,city,dicts,wholecities_dicts,country)
+        else:
+            country = u"http://www.geonames.org/6252001"
+            states_can = faerie1.processDoc2(uri, state, dicts[country]["states_dict"], 1)
+            cities_can = searchcity(states_can,uri,city,dicts,wholecities_dicts,country)
+    return cities_can
 
 def searchcity(states_can,uri,city,dicts,wholecities_dicts,country):
     cities_can = {}
