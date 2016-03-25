@@ -4,7 +4,8 @@ import copy
 import os
 import sys
 import json
-import faerie1
+import faerie
+import test
 
 from Toolkit import *
 
@@ -233,15 +234,15 @@ def readQueriesFromFile(sparkContext, priorDicts):
 def scoreCandidates(entry):
     sdicts = createEntrySimilarityDicts(entry)
     matching = []
-    print("before effect!")
+    # print("before effect!")
     recordEntities = reformatRecord2Entity([x for x in entry.record if len(x['tags'])!=0])
-    print(recordEntities)
+    # print(recordEntities)
     # todo: createEntity is for geoname domain only
     for candidate in entry.candidates:
         score = scoreRecordEntity(recordEntities, createEntity(str(candidate.value)), sdicts)
         matching.append(Row(value=str(candidate.value), score=float("{0:.4f}".format(score)), uri=str(candidate.uri)))
     matching.sort(key=lambda tup: tup.score, reverse=True)
-    return Row(uri=entry.uri, value=entry.value, matches=matching[:1])
+    return Row(uri=entry.uri, value=entry.value, matches=matching)
 
 
 def reformatRecord2EntityHelper(record, covered=set()):
@@ -573,28 +574,35 @@ def recordLinkage(queryDocuments, outputPath, priorDicts, readFromFile=True):
     if not readFromFile:
         # temp = Row(uri="", value="blah", record=Row(city="", state="")).copy()
         # temp['candidates'] = blah
-        queries = faerie1.runOnSpark(sc, sys.argv[4],queryDocuments,sys.argv[3],1)
+        # queryDocuments = sc.textFile(queryDocuments)
+        # queryDocuments = queryDocuments.map(lambda line :json.loads(line)["hasFeatureCollection"]["place_postalAddress_feature"]["featureObject"])
+        # queries = faerie.runOnSpark(sc, sys.argv[4],queryDocuments,sys.argv[3],2)
+
+        queries = test.run(sc, sys.argv[4],queryDocuments)
+        # queries.saveAsTextFile(outputPath+"pre")
         queries = queries.map(lambda x: Row(uri=x.document.id,
                                                value=x.document.value,
                                                record=getAllTokens(x.document.value, 2, priorDicts),
                                                candidates=[Row(uri=xx.id,
                                                                value=xx.value) for xx in x.entities]))
+
     else:
         queries = readQueriesFromFile(sc, priorDicts)
 
-    queries = queries.collect()
-    for query in queries:
-        # print(query)
-        scoreCandidates(query)
-    # result = queries.map(lambda x: scoreCandidates(x))
-    # result = result.map(lambda x: json.dumps({'uri': x.uri,
-    #                                           'value': x.value,
-    #                                           'matches': [{'uri': xx.uri,
-    #                                                        'value': xx.value,
-    #                                                        'score': xx.score} for xx in x.matches[0:1]]}))
+    # queries = queries.collect()
+    # for query in queries:
+    #     # print(query)
+    #     scoreCandidates(query)
+
+    result = queries.map(lambda x: scoreCandidates(x))
+    result = result.map(lambda x: json.dumps({'uri': x.uri,
+                                              'value': x.value,
+                                              'matches': [{'uri': xx.uri,
+                                                           'value': xx.value,
+                                                           'score': xx.score} for xx in x.matches]}))
     # result.printSchema()
     # print queries.first()
-    # result.saveAsTextFile(outputPath)
+    result.saveAsTextFile(outputPath)
 
 def dataDedup(sc, queriesPath, outputPath, priorDicts):
     sqlContext = SQLContext(sc)

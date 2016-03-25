@@ -102,7 +102,7 @@ def processDoc(line,config,dicts,runtype):
     if heap:
         returnValuesFromC = singleheap.getcandidates(heap, entity_tokennum, inverted_list_len, inverted_index,
                                                          inverted_list, keys, los, maxenl, threshold)
-        if runtype == 2: 
+        if runtype == 2:
             jsent = []
             for value in returnValuesFromC:
                 temp = Row(id=entity_realid[value[0]],value=entity_real[value[0]],start=value[1],end=value[2],score=value[3])
@@ -110,7 +110,7 @@ def processDoc(line,config,dicts,runtype):
             jsdoc = Row(id=documentId,value=document_real)
             jsonline = Row(document=jsdoc,entities=jsent)
             return jsonline
-            
+
         else:
             jsonline = {}
             jsonline["document"] = {}
@@ -143,6 +143,7 @@ def runOnSpark(sc,dictfile, inputfile, configfile,runtype):
         sqlContext = SQLContext(sc)
         lines = sqlContext.read.json(inputfile)
     else:
+        sqlContext = SQLContext(sc)
         lines = inputfile
     sc.broadcast(dicts)
     sc.broadcast(config)
@@ -152,20 +153,20 @@ def runOnSpark(sc,dictfile, inputfile, configfile,runtype):
 
 def consolerun():
     if sys.argv[1].startswith('-') and len(sys.argv) == 5:
-        option = sys.argv[1][1:]  
+        option = sys.argv[1][1:]
         if option == "spark":
             runOnSpark(sys.argv[2], sys.argv[3], sys.argv[4],1)
         elif option == 'text':
             run(sys.argv[2], sys.argv[3], sys.argv[4])
         else:
-            print 'Unknown option.' 
-            sys.exit()  
+            print 'Unknown option.'
+            sys.exit()
     else:
         print "Wrong Arguments Number"
-        sys.exit()  
+        sys.exit()
 # runOnSpark("sampledictionary.json","sampledocuments.json","sampleconfig.json",1)
 
-def runFordict(dictlist,inputstring):
+def readDictlist(dictlist,n):
     inverted_list = {}
     inverted_index = []
     entity_tokennum = {}
@@ -175,12 +176,13 @@ def runFordict(dictlist,inputstring):
     maxenl = 0
 
     i = 0
-    for word in dictlist:
-        entity_realid[i] = i
-        entity_real[i] = word
-        entity = word
+    for line in dictlist:
+        entity_realid[i] = line
+        entity_real[i] = dictlist[line]["name"]
+
+        entity = entity_real[i].lower().strip()
         inverted_index.append(entity)  # record each entity and its id
-        tokens = list(ngrams(entity, 2))
+        tokens = list(ngrams(entity, n))
         entity_tokennum[entity] = len(tokens)  # record each entity's token number
         if maxenl < len(tokens):
             maxenl = len(tokens)
@@ -196,9 +198,25 @@ def runFordict(dictlist,inputstring):
                 inverted_list[token].append(i)
                 inverted_list_len[token] = 1
         i += 1
+    return inverted_list,inverted_index,entity_tokennum,inverted_list_len,entity_realid,entity_real,maxenl
 
-    document = word
-    tokens = list(ngrams(document, 2))
+def processDoc2(iden,string,dicts,runtype):
+    inverted_list = dicts[0]
+    inverted_index = dicts[1]
+    entity_tokennum = dicts[2]
+    inverted_list_len = dicts[3]
+    entity_realid = dicts[4]
+    entity_real = dicts[5]
+    maxenl = dicts[6]
+
+    threshold = 0.8
+    n = 2
+
+    documentId = iden
+    document_real = string
+
+    document = document_real.lower().strip()
+    tokens = list(ngrams(document, n))
     heap = []
     keys = []
     los = len(tokens)
@@ -212,8 +230,31 @@ def runFordict(dictlist,inputstring):
             pass
     if heap:
         returnValuesFromC = singleheap.getcandidates(heap, entity_tokennum, inverted_list_len, inverted_index,
-                                                         inverted_list, keys, los, maxenl, 0.8)
-    if len(returnValuesFromC)>0:
-        return True
-    else:
-        return False
+                                                         inverted_list, keys, los, maxenl, threshold)
+        if runtype == 2:
+            jsent = []
+            for value in returnValuesFromC:
+                temp = Row(id=entity_realid[value[0]],value=entity_real[value[0]],start=value[1],end=value[2],score=value[3])
+                jsent.append(temp)
+            jsdoc = Row(id=documentId,value=document_real)
+            jsonline = Row(document=jsdoc,entities=jsent)
+            return jsonline
+
+        else:
+            jsonline = {}
+            jsonline["document"] = {}
+            jsonline["document"]["id"] = documentId
+            jsonline["document"]["value"] = document_real
+            jsonline["entities"] = {}
+            for value in returnValuesFromC:
+                temp = {}
+                temp["start"] = value[1]
+                temp["end"] = value[2]
+                temp["score"] = value[3]
+                try:
+                    jsonline["entities"][entity_realid[value[0]]]["candwins"].append(temp)
+                except KeyError:
+                    jsonline["entities"][entity_realid[value[0]]] = {}
+                    jsonline["entities"][entity_realid[value[0]]]["value"] = entity_real[value[0]]
+                    jsonline["entities"][entity_realid[value[0]]]["candwins"] = [temp]
+            return jsonline
