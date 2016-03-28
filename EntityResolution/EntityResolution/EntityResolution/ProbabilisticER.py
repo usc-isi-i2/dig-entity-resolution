@@ -1,12 +1,9 @@
 # __author__ = 'majid'
 
 import copy
-import os
-import sys
-import json
-import faerie
+from optparse import OptionParser
 import test
-
+from pyspark.sql import Row, SparkContext, SQLContext
 from Toolkit import *
 
 
@@ -604,12 +601,9 @@ def cleanCanopyClusters(canopy):
 #
 # def clusterCanopies(RecordLinker, canopies, )
 
-def temp(x):
-    print(x)
-    return ""
 
-def recordLinkage(queryDocuments, outputPath, priorDicts, readFromFile=True):
-    sc = SparkContext(appName="DIG-EntityResolution")
+def recordLinkage(sc, queryDocuments, outputPath, priorDicts, topk,city_dict, all_dict, readFromFile=True):
+
     sc.broadcast(EV)
     sc.broadcast(priorDicts)
     if not readFromFile:
@@ -618,8 +612,8 @@ def recordLinkage(queryDocuments, outputPath, priorDicts, readFromFile=True):
         # queryDocuments = sc.textFile(queryDocuments)
         # queryDocuments = queryDocuments.map(lambda line :json.loads(line)["hasFeatureCollection"]["place_postalAddress_feature"]["featureObject"])
         # queries = faerie.runOnSpark(sc, sys.argv[4],queryDocuments,sys.argv[3],2)
-        num_matches = int(sys.argv[4])
-        queries = test.run(sc, sys.argv[3],queryDocuments)
+        num_matches = int(topk)
+        queries = test.run(sc, city_dict, all_dict, queryDocuments)
 
         # queries.foreach(lambda x: testprint(priorDicts))
         # queries.saveAsTextFile(outputPath+"pre")
@@ -673,50 +667,32 @@ def dataDedup(sc, queriesPath, outputPath, priorDicts):
     res.saveAsTextFile(outputPath)
 
 if __name__ == "__main__":
+
+    sc = SparkContext(appName="DIG-EntityResolution")
     global EV
     EV = EnvVariables()
     RLInit()
 
+    parser = OptionParser()
 
-    os.environ['PYSPARK_PYTHON'] = "python2.7"
-    os.environ['PYSPARK_DRIVER_PYTHON'] = "python2.7"
-    # sparkPath = '/Users/majid/Downloads/spark-1.5.2/'
-    os.environ['SPARK_HOME'] = EV.sparkPath
-    os.environ['_JAVA_OPTIONS'] = "-Xmx12288m"
-    sys.path.append(EV.sparkPath+"python/")
-    sys.path.append(EV.sparkPath+"python/lib/py4j-0.9-src.zip")
+    (c_options, args) = parser.parse_args()
 
-    try:
-        from pyspark import SparkContext
-        from pyspark import SQLContext
-        from pyspark import SparkConf
-        from pyspark.ml.feature import HashingTF
-        from pyspark.ml.feature import IDF
-        from pyspark.ml.feature import Word2Vec
-        from pyspark.ml.feature import Tokenizer
-        from pyspark.sql import Row
+    input_path = args[0]
+    output_path = args[1]
+    prior_dict_file = args[2]
+    topk = args[3]
+    city_dict_path = args[4]
+    state_dict_path = args[5]
+    all_dict_path = args[6]
 
 
-    except ImportError as e:
-        print("Error importing Spark Modules", e)
-        sys.exit(1)
+    city_dict = json.load(open(city_dict_path))
+    all_dict = json.load(open(all_dict_path))
+    state_dict = json.load(open(state_dict_path))
 
-    priorDictsFile = open("priorDicts.json", 'w')
-    priorDictsFile.write(json.dumps(createGeonameDicts("us_cities.jl")))
-    priorDictsFile.close()
-    priorDicts = json.load(open("priorDicts.json"))
+    priorDicts = json.load(open(prior_dict_file))
 
 
-    EV.outputPath = sys.argv[2]
-    EV.queriesPath = sys.argv[1]
-    # print(EV.attributes)
-    # sc.broadcast(EV)
-    # priorDicts = json.load(priorDictsPath)
-    # sc.broadcast(priorDicts)
-    # print(reformatRecord2Entity(getAllTokens("san francisco california united states", 2, priorDicts)))
-    # print(getAllTokens("san francisco california united states", 2, priorDicts))
-    # exit(0)
-    # dataDedup(sc, sys.argv[1], sys.argv[2], priorDicts)
-    # queries = faerie.runOnSpark(sys.argv[1],sys.argv[2],sys.argv[3])
-    recordLinkage(sys.argv[1], sys.argv[2], priorDicts, False)
-    # print(reformatRecord2Entity(getAllTokens("San Francisco California United States", 2, priorDicts)))
+    EV.outputPath = output_path
+    EV.queriesPath = input_path
+    recordLinkage(sc, input_path, output_path, priorDicts, topk, city_dict, all_dict, False)

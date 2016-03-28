@@ -3,6 +3,22 @@ import re
 import json
 import faerie1
 
+# Given a path in json, return value if path, full path denoted by . (example address.name) exists, otherwise return ''
+def get_value_json(path, doc):
+    paths = path.strip().split('.')
+    for field in paths:
+        if field in doc:
+            doc = doc[field]
+        else:
+            return ''
+
+    if type(doc) == dict:
+        return json.dumps(doc)
+    else:
+        return doc
+
+
+
 def createGeonameDicts(refPath):
     states = set()
     countries = set()
@@ -10,12 +26,15 @@ def createGeonameDicts(refPath):
 
     for line in open(refPath):
         jsonobj = json.loads(line)
-        containedin = jsonobj['address']['addressRegion']
-        if "name" in containedin:
-            states.add(containedin['name'].lower())
-            # print(containedin['State'])
-        if "address" in containedin:
-            countries.add(containedin['address']['addressCountry']['name'].lower())
+
+        state = get_value_json('address.addressRegion.name', jsonobj).lower()
+        if state != '':
+            states.add(state)
+
+        country = get_value_json('address.addressCountry.name', jsonobj).lower()
+        if country != '':
+            countries.add(country)
+
         if jsonobj['a'] == 'City':
             citites.add(jsonobj['name'].lower())
 

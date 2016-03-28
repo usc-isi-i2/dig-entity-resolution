@@ -1,32 +1,28 @@
 from nltk.util import ngrams
 import singleheap
-import json
 import sys
-import os
-import sys
-import re
 import json
 
 
 
-os.environ['PYSPARK_PYTHON'] = "python2.7"
-os.environ['PYSPARK_DRIVER_PYTHON'] = "python2.7"
-os.environ['SPARK_HOME'] = "/Users/karma/Documents/spark-1.6.0/"
-os.environ['_JAVA_OPTIONS'] =  "-Xmx12288m"
-sys.path.append("/Users/karma/Documents/spark-1.6.0/python/")
-sys.path.append("/Users/karma/Documents/spark-1.6.0/python/lib/py4j-0.9-src.zip")
-
-try:
-    from pyspark import SparkContext
-    from pyspark import SQLContext
-    from pyspark import SparkConf
-    from pyspark.sql import Row
-
-
-
-except ImportError as e:
-    print ("Error importing Spark Modules", e)
-    sys.exit(1)
+# os.environ['PYSPARK_PYTHON'] = "python2.7"
+# os.environ['PYSPARK_DRIVER_PYTHON'] = "python2.7"
+# os.environ['SPARK_HOME'] = "/Users/karma/Documents/spark-1.6.0/"
+# os.environ['_JAVA_OPTIONS'] =  "-Xmx12288m"
+# sys.path.append("/Users/karma/Documents/spark-1.6.0/python/")
+# sys.path.append("/Users/karma/Documents/spark-1.6.0/python/lib/py4j-0.9-src.zip")
+#
+# try:
+#     # from pyspark import SparkContext
+#     # from pyspark import SQLContext
+#     # from pyspark import SparkConf
+#     # from pyspark.sql import Row
+#
+#
+#
+# except ImportError as e:
+#     print ("Error importing Spark Modules", e)
+#     sys.exit(1)
 
 def readDict(dictfile,config):
     inverted_list = {}
@@ -136,35 +132,35 @@ def run(dictfile, inputfile, configfile):
     for line in open(inputfile):
         processDoc(line,config,dicts,1)
 
-def runOnSpark(sc,dictfile, inputfile, configfile,runtype):
-    config = json.loads(open(configfile).read())
-    dicts = readDict(dictfile,config)
-    if runtype == 1:
-        sqlContext = SQLContext(sc)
-        lines = sqlContext.read.json(inputfile)
-    else:
-        sqlContext = SQLContext(sc)
-        lines = inputfile
-    sc.broadcast(dicts)
-    sc.broadcast(config)
-    candidates = lines.map(lambda line : processDoc(line,config,dicts,2))
-
-    return candidates
-
-def consolerun():
-    if sys.argv[1].startswith('-') and len(sys.argv) == 5:
-        option = sys.argv[1][1:]
-        if option == "spark":
-            runOnSpark(sys.argv[2], sys.argv[3], sys.argv[4],1)
-        elif option == 'text':
-            run(sys.argv[2], sys.argv[3], sys.argv[4])
-        else:
-            print 'Unknown option.'
-            sys.exit()
-    else:
-        print "Wrong Arguments Number"
-        sys.exit()
-# runOnSpark("sampledictionary.json","sampledocuments.json","sampleconfig.json",1)
+# def runOnSpark(sc,dictfile, inputfile, configfile,runtype):
+#     config = json.loads(open(configfile).read())
+#     dicts = readDict(dictfile,config)
+#     if runtype == 1:
+#         sqlContext = SQLContext(sc)
+#         lines = sqlContext.read.json(inputfile)
+#     else:
+#         sqlContext = SQLContext(sc)
+#         lines = inputfile
+#     sc.broadcast(dicts)
+#     sc.broadcast(config)
+#     candidates = lines.map(lambda line : processDoc(line,config,dicts,2))
+#
+#     return candidates
+#
+# def consolerun():
+#     if sys.argv[1].startswith('-') and len(sys.argv) == 5:
+#         option = sys.argv[1][1:]
+#         if option == "spark":
+#             runOnSpark(sys.argv[2], sys.argv[3], sys.argv[4],1)
+#         elif option == 'text':
+#             run(sys.argv[2], sys.argv[3], sys.argv[4])
+#         else:
+#             print 'Unknown option.'
+#             sys.exit()
+#     else:
+#         print "Wrong Arguments Number"
+#         sys.exit()
+# # runOnSpark("sampledictionary.json","sampledocuments.json","sampleconfig.json",1)
 
 def readDictlist(dictlist,n):
     inverted_list = {}
