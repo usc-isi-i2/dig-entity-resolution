@@ -36,10 +36,7 @@ def createDict1(path):
             country = line["address"]["addressRegion"]["address"]["addressCountry"]["name"]
             country_uri = line["address"]["addressRegion"]["address"]["addressCountry"]["sameAs"]
         except:
-            state = "Delaware"
-            state_uri = "http://www.geonames.org/4142224"
-            country = "United States"
-            country_uri = "http://www.geonames.org/6252001"
+            pass
         wholestates_dicts[state_uri] = {}
         wholestates_dicts[state_uri]["name"] = state
         wholestates_dicts[state_uri]["country_uri"] = country_uri
