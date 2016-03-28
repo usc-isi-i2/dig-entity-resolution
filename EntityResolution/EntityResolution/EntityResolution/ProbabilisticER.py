@@ -168,7 +168,10 @@ def scoreRecordEntityHelper(sdicts, bestscore, branchscore, record=[], entity={}
 def scoreRecordEntity(recordEntities, entity, similarityDicts):  # record and entity are the same json format
     maxscore = 0
     for recenttity in recordEntities:
-        score = entitySimilarityDict(recenttity, entity, similarityDicts)
+        score = entitySimilarityDict(recenttity, entity, similarityDicts, 'set', 'string')
+        # print(str(score) + "  " +
+        #       str(recenttity) + "  " +
+        #       str(entity))
         if maxscore < score:
             maxscore = score
     return maxscore
@@ -226,7 +229,7 @@ def parseQuery(query, priorDicts):
 def readQueriesFromFile(sparkContext, priorDicts):
     sqlContext = SQLContext(sparkContext)
     raw_data = sqlContext.parquetFile(EV.queriesPath)
-    print(raw_data.printSchema())
+    # print(raw_data.printSchema())
     data = raw_data.map(lambda x: parseQuery(x, priorDicts))
     return data
 
@@ -236,10 +239,16 @@ def scoreCandidates(entry):
     matching = []
     # print("before effect!")
     recordEntities = reformatRecord2Entity([x for x in entry.record if len(x['tags'])!=0])
+    # print(sdicts)
+    # print("==============")
     # print(recordEntities)
+    # print("============")
     # todo: createEntity is for geoname domain only
     for candidate in entry.candidates:
         score = scoreRecordEntity(recordEntities, createEntity(str(candidate.value)), sdicts)
+        # print(candidate)
+        # print(score)
+        # print("------------")
         matching.append(Row(value=str(candidate.value), score=float("{0:.4f}".format(score)), uri=str(candidate.uri)))
     matching.sort(key=lambda tup: tup.score, reverse=True)
     return Row(uri=entry.uri, value=entry.value, matches=matching)
@@ -298,17 +307,49 @@ def reformatRecord2Entity(record):
     return res
 
 
-def entitySimilarityDict(e1, e2, sdicts): # sdicts are created on canopy
+def entitySimilarityDict(e1, e2, sdicts, e1type, e2type): # sdicts are created on canopy
     score = 1.0
-    for tag in e1: # let e1 be the entity and e2 be the mention
-        if tag in e2:
-            tempscore = 0
-            for xx in e1[tag]:
-                for yy in e2[tag]:
-                    temp = scoreFieldFromDict(sdicts, e2[tag], e1[tag], tag)
-                    if temp > tempscore:
-                        tempscore = temp
-            score *= tempscore
+
+    if e1type is 'set':
+        if e2type is 'set':
+            for tag in e1: # let e1 be the entity and e2 be the mention
+                if tag in e2:
+                    tempscore = 0
+
+                    for xx in e1[tag]:
+                        for yy in e2[tag]:
+                            temp = scoreFieldFromDict(sdicts, xx, yy, tag)
+                            if temp > tempscore:
+                                tempscore = temp
+                    score *= tempscore
+        else:
+            for tag in e1: # let e1 be the entity and e2 be the mention
+                if tag in e2:
+                    tempscore = 0
+
+                    for xx in e1[tag]:
+                        temp = scoreFieldFromDict(sdicts, xx, e2[tag], tag)
+                        if temp > tempscore:
+                            tempscore = temp
+                    score *= tempscore
+    else:
+        if e2type is 'set':
+            for tag in e1: # let e1 be the entity and e2 be the mention
+                if tag in e2:
+                    tempscore = 0
+
+                    for yy in e2[tag]:
+                        temp = scoreFieldFromDict(sdicts, e1[tag], yy, tag)
+                        if temp > tempscore:
+                            tempscore = temp
+                    score *= tempscore
+        else:
+            for tag in e1: # let e1 be the entity and e2 be the mention
+                if tag in e2:
+                    tempscore = scoreFieldFromDict(sdicts, e1[tag], e2[tag], tag)
+                    score *= tempscore
+
+
     for tag in (set(e1.keys()) - set(e2.keys())):
         # if type(e1[tag]) is set:
         #     score *= scoreFieldFromDict(sdicts, next(iter(e1[tag])), None, tag)
@@ -351,7 +392,7 @@ def recordSimilarityDict(r1, r2, sdicts):
     r2_best = -1
     for r1_i, r1e in enumerate(r1entities):
         for r2_i, r2e in enumerate(r2entities):
-            tempscore = entitySimilarityDict(r1e, r2e, sdicts)
+            tempscore = entitySimilarityDict(r1e, r2e, sdicts, 'set', 'set')
             if score < tempscore:
                 r1_best = r1_i
                 r2_best = r2_i
@@ -435,14 +476,14 @@ def convertToJson(xx):
     return json.dumps({'cluster': clusters})
 
 def clusterCanopies(canopy): # canopy contains several entity like presented records
-    print("here we are!!!")
+    # print("here we are!!!")
     # canopy = copy.deepcopy(canopy)
     res = []
     for r in canopy:
         res.append(Row(uris=[r.uri], entities=r.entities))
 
     for i in range(len(canopy)):
-        print("one iteration")
+        # print("one iteration")
         # print(str(convertToJson(res)))
         res = clusterCanopiesHelper(res, i)
     # print('\n\n\n')
@@ -577,8 +618,10 @@ def recordLinkage(queryDocuments, outputPath, priorDicts, readFromFile=True):
         # queryDocuments = sc.textFile(queryDocuments)
         # queryDocuments = queryDocuments.map(lambda line :json.loads(line)["hasFeatureCollection"]["place_postalAddress_feature"]["featureObject"])
         # queries = faerie.runOnSpark(sc, sys.argv[4],queryDocuments,sys.argv[3],2)
-
+        num_matches = int(sys.argv[5])
         queries = test.run(sc, sys.argv[4],queryDocuments)
+
+        # queries.foreach(lambda x: testprint(priorDicts))
         # queries.saveAsTextFile(outputPath+"pre")
         queries = queries.map(lambda x: Row(uri=x.document.id,
                                                value=x.document.value,
@@ -592,17 +635,21 @@ def recordLinkage(queryDocuments, outputPath, priorDicts, readFromFile=True):
     # queries = queries.collect()
     # for query in queries:
     #     # print(query)
-    #     scoreCandidates(query)
-
+    #     print(scoreCandidates(query))
     result = queries.map(lambda x: scoreCandidates(x))
     result = result.map(lambda x: json.dumps({'uri': x.uri,
                                               'value': x.value,
                                               'matches': [{'uri': xx.uri,
                                                            'value': xx.value,
-                                                           'score': xx.score} for xx in x.matches]}))
+                                                           'score': xx.score} for xx in x.matches[:num_matches]]}))
+
     # result.printSchema()
     # print queries.first()
     result.saveAsTextFile(outputPath)
+    # result.foreach(lambda x: testprint(x))
+
+def testprint(x):
+    print(x)
 
 def dataDedup(sc, queriesPath, outputPath, priorDicts):
     sqlContext = SQLContext(sc)
@@ -672,3 +719,4 @@ if __name__ == "__main__":
     # dataDedup(sc, sys.argv[1], sys.argv[2], priorDicts)
     # queries = faerie.runOnSpark(sys.argv[1],sys.argv[2],sys.argv[3])
     recordLinkage(sys.argv[1], sys.argv[2], priorDicts, False)
+    # print(reformatRecord2Entity(getAllTokens("San Francisco California United States", 2, priorDicts)))
