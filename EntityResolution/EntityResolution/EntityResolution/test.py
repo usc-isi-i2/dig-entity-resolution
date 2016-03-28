@@ -36,7 +36,8 @@ def createDict1(path):
             country = line["address"]["addressRegion"]["address"]["addressCountry"]["name"]
             country_uri = line["address"]["addressRegion"]["address"]["addressCountry"]["sameAs"]
         except:
-            pass
+            state = ""
+            country = ""
         wholestates_dicts[state_uri] = {}
         wholestates_dicts[state_uri]["name"] = state
         wholestates_dicts[state_uri]["country_uri"] = country_uri

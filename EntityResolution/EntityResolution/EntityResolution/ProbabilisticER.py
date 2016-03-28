@@ -618,8 +618,8 @@ def recordLinkage(queryDocuments, outputPath, priorDicts, readFromFile=True):
         # queryDocuments = sc.textFile(queryDocuments)
         # queryDocuments = queryDocuments.map(lambda line :json.loads(line)["hasFeatureCollection"]["place_postalAddress_feature"]["featureObject"])
         # queries = faerie.runOnSpark(sc, sys.argv[4],queryDocuments,sys.argv[3],2)
-        num_matches = int(sys.argv[5])
-        queries = test.run(sc, sys.argv[4],queryDocuments)
+        num_matches = int(sys.argv[4])
+        queries = test.run(sc, sys.argv[3],queryDocuments)
 
         # queries.foreach(lambda x: testprint(priorDicts))
         # queries.saveAsTextFile(outputPath+"pre")
