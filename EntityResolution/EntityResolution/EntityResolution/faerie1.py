@@ -177,11 +177,8 @@ def readDictlist(dictlist,n):
 
     i = 0
     for line in dictlist:
-        try:
-            entity_realid[i] = dictlist[line]["uri"]
-        except KeyError:
-            entity_realid[i] = i
-        entity_real[i] = line
+        entity_realid[i] = line
+        entity_real[i] = dictlist[line]["name"]
 
         entity = entity_real[i].lower().strip()
         inverted_index.append(entity)  # record each entity and its id
