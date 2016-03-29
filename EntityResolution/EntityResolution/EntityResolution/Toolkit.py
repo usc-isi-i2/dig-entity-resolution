@@ -2,6 +2,7 @@ import sys
 import re
 import json
 import faerie1
+import label
 
 # Given a path in json, return value if path, full path denoted by . (example address.name) exists, otherwise return ''
 def get_value_json(path, doc):
@@ -31,13 +32,13 @@ def createGeonameDicts(refPath):
         if state != '':
             states.add(state)
 
-        country = get_value_json('address.addressCountry.name', jsonobj).lower()
+        country = get_value_json('address.addressRegion.address.addressCountry.name', jsonobj).lower()
         if country != '':
             countries.add(country)
 
         if jsonobj['a'] == 'City':
             citites.add(jsonobj['name'].lower())
-
+    print countries
     return {'city': {x:0 for x in citites},
             'state': {x:0 for x in states},
             'country': {x:0 for x in countries}}
@@ -207,8 +208,14 @@ def getAllTokens(string, T=-1, dicts={}):
                 continue
             # print(token)
             tags = []
+            # if label.correct(token.lower(),dicts["city"]):
+            # if faerie1.runFordict(dicts["city"].keys(),token.lower()):
             if token.lower() in dicts["city"]:
                 tags.append("city")
+            if token.lower() in dicts["state"]:
+                tags.append("state")
+            if token.lower() in dicts["country"]:
+                tags.append("country")
             jobject = {"value": token, "id": id, "covers": covers, "tags": tags}
             alltokens.append(jobject)
             id -= 1
