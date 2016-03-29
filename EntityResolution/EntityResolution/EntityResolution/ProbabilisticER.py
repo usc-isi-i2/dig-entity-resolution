@@ -3,7 +3,8 @@
 import copy
 from optparse import OptionParser
 import test
-from pyspark.sql import Row, SparkContext, SQLContext
+from pyspark.sql import Row
+from pyspark import SparkContext, SQLContext
 from Toolkit import *
 
 
@@ -43,9 +44,9 @@ def readAttrConfig(cpath):
 
 def RLInit():
     # global EV
-    EV.similarityDicts = [{} for xx in EV.allTags]
     readAttrConfig("attr_config.json")
     readEnvConfig("env_config.json")
+    EV.similarityDicts = [{} for xx in EV.allTags]
     EV.RecordLeftoverPenalty = 0.7
     EV.mergeThreshold = 0.5
     return ""
@@ -446,19 +447,9 @@ def clusterCanopiesHelper(canopy, firstIndex):
     if len(canopy) <= 1 or firstIndex >= len(canopy)-1:
         return canopy
     toberemoved = []
-    # r = canopy[firstIndex]
-    # print("first index is: " + str(firstIndex))
     for r2_i, r2 in enumerate(canopy[firstIndex+1:]):
-        # print(r2)
-        # print(r2.entities)
         score, b1, b2 = entityRepresentationsSimilarity(canopy[firstIndex].entities, r2.entities)
-        # print(str(canopy[firstIndex].uris) + " " + str(r2.uris) + " " + str(score) + " " + str(canopy[firstIndex].entities) + " " + str(r2.entities))
         if score > EV.mergeThreshold:
-            # print(r.entities)
-            # print(r2.entities)
-            # print(b1)
-            # print(b2)
-            # print(mergeEntityRepresentations(r.entities, r2.entities, b1, b2))
             canopy[firstIndex] = Row(uris=canopy[firstIndex].uris+r2.uris,
                             entities=mergeEntityRepresentations(canopy[firstIndex].entities, r2.entities, b1, b2))
             toberemoved.append(r2_i+1+firstIndex)
@@ -530,14 +521,6 @@ def areSameEntities(x, entity):
     return True
 
 def cleanClusterEntities(entities):
-    newentitites = []
-    # for entity in entities:
-    #     flag = False
-    #     for x in newentitites:
-    #         if areSameEntities(x, entity):
-    #             flag = True
-    #     if not flag:
-    #         newentitites.append(entity)
     for entity in entities:
         for tag, val in entity.items():
             entity[tag] = list(val)
@@ -550,62 +533,10 @@ def cleanCanopyClusters(canopy):
 
 
 
+def recordLinkage(sc, queryDocuments, outputPath, priorDicts, topk,city_dict, all_dict, state_dict, readFromFile=True):
 
-# def recordSimilarityHelper(RecordLinker, sdicts, bestscore, branchscore, record1=[], record2=[], covered1=set(), covered2=set()):
-#     record1 = [r for r in record1 if not any(x in covered1 for x in r['covers'])]
-#     record2 = [r for r in record2 if not any(x in covered1 for x in r['covers'])]
-#     if record1 is None or len(record1) == 0:
-#         # if anything left in the other record, deal with them!
-#         score = 1
-#         for i in range(len(record2)):
-#             score *= RecordLeftoverPenalty
-#         return branchscore*score
-#
-#     partialscore = 0.0
-#     flag = True
-#     for f_i, f in enumerate(record1):
-#         coveredcopy = copy.copy(covered1)
-#         coveredcopy.update(f['covers'])
-#         for tag in f['tags']:
-#             entitycopy = copy.copy(entity)
-#             recordcopy = copy.copy(record)
-#             if tag in entitycopy:
-#                 # run independent probabilistic matching
-#                 partialscore = scoreFieldFromDict(sdicts, f['value'], entity[tag], tag)
-#                 del entitycopy[tag]
-#             else:
-#                 # approximate based on priors
-#                 partialscore = scoreFieldFromDict(sdicts, f['value'], None, tag)
-#             del recordcopy[f_i]
-#             partialscore *= branchscore
-#             if partialscore <= bestscore:
-#                 continue
-#             flag = False
-#             partialscore = scoreRecordEntityHelper(sdicts, bestscore, partialscore, recordcopy, entitycopy, coveredcopy)
-#
-#             if partialscore > bestscore:
-#                 # todo: update best record
-#                 bestscore = partialscore
-#     if flag:
-#         # if anything left in the entity, deal with them!
-#         score = 1
-#         for tag in entity.keys():
-#             score = score * scoreFieldFromDict(sdicts, None, entity[tag], tag)
-#         for entry in record:
-#             score *= max([scoreFieldFromDict(sdicts, entry['value'], None, x) for x in entry['tags']])
-#         return branchscore*score
-#     return bestscore
-#
-# def recordSimilarity(RecordLinker, record1, record2, similarityDicts):
-#     return recordSimilarityHelper(similarityDicts, 0.0, 1.0, record1, record2, set(), set())
-#
-# def clusterCanopies(RecordLinker, canopies, )
-
-
-def recordLinkage(sc, queryDocuments, outputPath, priorDicts, topk,city_dict, all_dict, readFromFile=True):
-
-    sc.broadcast(EV)
-    sc.broadcast(priorDicts)
+    # sc.broadcast(EV)
+    # sc.broadcast(priorDicts)
     if not readFromFile:
         # temp = Row(uri="", value="blah", record=Row(city="", state="")).copy()
         # temp['candidates'] = blah
@@ -613,7 +544,7 @@ def recordLinkage(sc, queryDocuments, outputPath, priorDicts, topk,city_dict, al
         # queryDocuments = queryDocuments.map(lambda line :json.loads(line)["hasFeatureCollection"]["place_postalAddress_feature"]["featureObject"])
         # queries = faerie.runOnSpark(sc, sys.argv[4],queryDocuments,sys.argv[3],2)
         num_matches = int(topk)
-        queries = test.run(sc, city_dict, all_dict, queryDocuments)
+        queries = test.run(sc, city_dict, all_dict,state_dict, queryDocuments)
 
         # queries.foreach(lambda x: testprint(priorDicts))
         # queries.saveAsTextFile(outputPath+"pre")
@@ -641,9 +572,6 @@ def recordLinkage(sc, queryDocuments, outputPath, priorDicts, topk,city_dict, al
     # print queries.first()
     result.saveAsTextFile(outputPath)
     # result.foreach(lambda x: testprint(x))
-
-def testprint(x):
-    print(x)
 
 def dataDedup(sc, queriesPath, outputPath, priorDicts):
     sqlContext = SQLContext(sc)
@@ -692,7 +620,4 @@ if __name__ == "__main__":
 
     priorDicts = json.load(open(prior_dict_file))
 
-
-    EV.outputPath = output_path
-    EV.queriesPath = input_path
-    recordLinkage(sc, input_path, output_path, priorDicts, topk, city_dict, all_dict, False)
+    recordLinkage(sc, input_path, output_path, priorDicts, topk, city_dict, all_dict, state_dict, False)

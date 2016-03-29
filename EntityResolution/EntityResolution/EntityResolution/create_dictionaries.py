@@ -50,13 +50,13 @@ def createDict1(path):
 
     return wholecities_dicts, wholestates_dicts, dicts
 
-def createDict2(f, f2,f3):
+def createDict2(all_dict, state_dict, city_dict):
     dicts = {}
-    wholestates_dicts = faerie1.readDictlist(f3, 2)
-    wholecities_dicts = faerie1.readDictlist(f2, 2)
-    dicts["countries_dict"] = faerie1.readDictlist(f, 2)
-    for country in f:
-        states = f[country]["states"]
+    wholestates_dicts = faerie1.readDictlist(state_dict, 2)
+    wholecities_dicts = faerie1.readDictlist(city_dict, 2)
+    dicts["countries_dict"] = faerie1.readDictlist(all_dict, 2)
+    for country in all_dict:
+        states = all_dict[country]["states"]
         dicts[country] = {}
         dicts[country]["states_dict"] = faerie1.readDictlist(states, 2)
         for state in states:

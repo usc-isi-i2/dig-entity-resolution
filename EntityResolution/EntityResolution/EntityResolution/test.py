@@ -4,6 +4,7 @@ import os
 import sys
 import create_dictionaries
 from pyspark.sql import Row
+import Toolkit
 
 # os.environ['PYSPARK_PYTHON'] = "python2.7"
 # os.environ['PYSPARK_DRIVER_PYTHON'] = "python2.7"
@@ -26,9 +27,11 @@ def processDoc(wholecities_faerie,wholestates_faerie, dicts, line,wholecities_di
     jsent = []
     for entity in cities_can.entities:
         eid = entity.id
-        snc = wholecities_dicts[eid]["snc"]
-        temp = Row(id=eid,value=entity.value + ","+snc,start=entity.start,end=entity.end,score=entity.score)
-        jsent.append(temp)
+
+        snc = Toolkit.get_value_json(eid + ".snc", wholecities_dicts)
+        if snc != '':
+            temp = Row(id=eid,value=entity.value + ","+snc,start=entity.start,end=entity.end,score=entity.score)
+            jsent.append(temp)
     # print cities_can
     jsdoc = Row(id=cities_can.document.id,value=cities_can.document.value + ","+state+",United States")
     jsonline = Row(document=jsdoc,entities=jsent)
@@ -56,13 +59,15 @@ def search(country_can,uri,wholestates_faerie,state,dicts,wholecities_faerie,cit
             cities_can = {}
             if states_can and states_can != {} and states_can["entities"] != {}:
                 for key in states_can["entities"]:
-                    country = wholestates_dicts[key]["country_uri"]
-                    try:
-                        cities_can["entities"] = dict(cities_can["entities"],
-                                              **faerie1.processDoc2(uri, city, dicts[country][key]["cities"], 2)[
-                                                  "entities"])
-                    except KeyError:
-                        cities_can = faerie1.processDoc2(uri, city, dicts[country][key]["cities"], 2)
+                    country = Toolkit.get_value_json(key + ".country_uri", wholestates_dicts)
+                    # country = wholestates_dicts[key]["country_uri"]
+                    if country != '':
+                        try:
+                            cities_can["entities"] = dict(cities_can["entities"],
+                                                  **faerie1.processDoc2(uri, city, dicts[country][key]["cities"], 2)[
+                                                      "entities"])
+                        except KeyError:
+                            cities_can = faerie1.processDoc2(uri, city, dicts[country][key]["cities"], 2)
             else:
                 cities_can = faerie1.processDoc2(uri,city,wholecities_faerie,2)
     return cities_can
@@ -85,9 +90,9 @@ def searchcity(states_can,uri,city,dicts,wholecities_dicts,country):
 def run(sc,city_dict, all_dict, state_dict, inputpath):
 
     wcd,wsd, d = create_dictionaries.createDict2(all_dict, state_dict,city_dict)
-    sc.broadcast(wsd)
-    sc.broadcast(wcd)
-    sc.broadcast(d)
+    # sc.broadcast(wsd)
+    # sc.broadcast(wcd)
+    # sc.broadcast(d)
     lines = sc.textFile(inputpath)
     candidates = lines.map(lambda line : processDoc(wcd,wsd,d,json.loads(line), city_dict,state_dict))
     return candidates
