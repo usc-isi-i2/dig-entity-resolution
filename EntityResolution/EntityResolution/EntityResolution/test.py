@@ -28,10 +28,9 @@ def processDoc(wholecities_faerie,wholestates_faerie, dicts, line,wholecities_di
     for entity in cities_can.entities:
         eid = entity.id
 
-        snc = Toolkit.get_value_json(eid + ".snc", wholecities_dicts)
-        if snc != '':
-            temp = Row(id=eid,value=entity.value + ","+snc,start=entity.start,end=entity.end,score=entity.score)
-            jsent.append(temp)
+        snc = wholecities_dicts[eid]["snc"]
+        temp = Row(id=eid,value=entity.value + ","+snc,start=entity.start,end=entity.end,score=entity.score)
+        jsent.append(temp)
     # print cities_can
     jsdoc = Row(id=cities_can.document.id,value=cities_can.document.value + ","+state+",United States")
     jsonline = Row(document=jsdoc,entities=jsent)
@@ -59,8 +58,8 @@ def search(country_can,uri,wholestates_faerie,state,dicts,wholecities_faerie,cit
             cities_can = {}
             if states_can and states_can != {} and states_can["entities"] != {}:
                 for key in states_can["entities"]:
-                    country = Toolkit.get_value_json(key + ".country_uri", wholestates_dicts)
-                    # country = wholestates_dicts[key]["country_uri"]
+                    # country = Toolkit.get_value_json(key + ".country_uri", wholestates_dicts)
+                    country = wholestates_dicts[key]["country_uri"]
                     if country != '':
                         try:
                             cities_can["entities"] = dict(cities_can["entities"],
