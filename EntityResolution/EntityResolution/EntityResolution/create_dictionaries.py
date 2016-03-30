@@ -11,44 +11,50 @@ def create_prior_dict(path):
 def createDict1(path):
     dicts = {}
     wholecities_dicts = {}
+    all_cities_dict={}
     wholestates_dicts = {}
     for line in open(path):
 
         line = json.loads(line)
-        city = line["name"]
-        city_uri = line["uri"]
-        try:
-            state = line["address"]["addressRegion"]["name"]
-            state_uri = line["address"]["addressRegion"]["sameAs"]
-            country = line["address"]["addressCountry"]["name"]
-            country_uri = line["address"]["addressCountry"]["sameAs"]
-            wholestates_dicts[state_uri] = {}
-            wholestates_dicts[state_uri]["name"] = state
-            wholestates_dicts[state_uri]["country_uri"] = country_uri
+        if 'name' in line:
+            city = line["name"]
+            print city + " " + line['alternateName']
+            city_uri = line["uri"]
             try:
-                stateDict = dicts[country_uri]["states"]
+                state = line["address"]["addressRegion"]["name"]
+                state_uri = line["address"]["addressRegion"]["sameAs"]
+                country = line["address"]["addressCountry"]["name"]
+                country_uri = line["address"]["addressCountry"]["sameAs"]
+                wholestates_dicts[state_uri] = {}
+                wholestates_dicts[state_uri]["name"] = state
+                wholestates_dicts[state_uri]["country_uri"] = country_uri
                 try:
-                    stateDict[state_uri]["cities"][city_uri] = {}
-                    stateDict[state_uri]["cities"][city_uri]["name"] = city
-                    stateDict[state_uri]["cities"][city_uri]["snc"] = state + "," + country
+                    stateDict = dicts[country_uri]["states"]
+                    try:
+                        stateDict[state_uri]["cities"][city_uri] = {}
+                        stateDict[state_uri]["cities"][city_uri]["name"] = city
+                        stateDict[state_uri]["cities"][city_uri]["snc"] = state + "," + country
+                    except KeyError:
+                        stateDict[state_uri] = {"cities": {city_uri: {"name": city, "snc": state + "," + country}},
+                                                    "name": state}
                 except KeyError:
-                    stateDict[state_uri] = {"cities": {city_uri: {"name": city, "snc": state + "," + country}},
-                                                "name": state}
-            except KeyError:
-                dicts[country_uri] = {"states": {
-                        state_uri: {"name": state, "cities": {city_uri: {"name": city, "snc": state + "," + country}}}},
-                                          "name": country}
-        except:
-            state = ""
-            country = ""
+                    dicts[country_uri] = {"states": {
+                            state_uri: {"name": state, "cities": {city_uri: {"name": city, "snc": state + "," + country}}}},
+                                              "name": country}
+            except:
+                state = ""
+                country = ""
 
 
-        if int(line["populationOfArea"]) >= 25000:
-            wholecities_dicts[city_uri] = {}
-            wholecities_dicts[city_uri]["name"] = city
-            wholecities_dicts[city_uri]["snc"] = state + "," + country
+            if int(line["populationOfArea"]) >= 25000:
+                wholecities_dicts[city_uri] = {}
+                wholecities_dicts[city_uri]["name"] = city
+                wholecities_dicts[city_uri]["snc"] = state + "," + country
+            all_cities_dict[city_uri] = {}
+            all_cities_dict[city_uri]['name'] = city
+            all_cities_dict[city_uri]['snc'] = state + "," + country
 
-    return wholecities_dicts, wholestates_dicts, dicts
+    return wholecities_dicts, wholestates_dicts, dicts, all_cities_dict
 
 def createDict2(all_dict, state_dict, city_dict):
     dicts = {}
@@ -76,7 +82,7 @@ if __name__ == "__main__":
 
     input_path = args[0]
     output_path = args[1]
-    f1, f2, f3 = createDict1(input_path)
+    f1, f2, f3, f4 = createDict1(input_path)
     city_dict = codecs.open(output_path + "/city_dict.json", 'w')
     city_dict.write(json.dumps(f1))
 
@@ -85,6 +91,9 @@ if __name__ == "__main__":
 
     all_dict = codecs.open(output_path + "/all_dict.json", 'w')
     all_dict.write(json.dumps(f3))
+
+    all_city_dict = codecs.open(output_path + "/all_city_dict.json", 'w')
+    all_city_dict.write(json.dumps(f4))
 
     prior_dict = codecs.open(output_path + "/prior_dict.json", 'w')
     prior_dict.write(create_prior_dict(input_path))

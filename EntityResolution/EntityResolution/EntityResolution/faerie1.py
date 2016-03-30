@@ -5,26 +5,6 @@ import json
 from pyspark.sql import Row
 
 
-
-# os.environ['PYSPARK_PYTHON'] = "python2.7"
-# os.environ['PYSPARK_DRIVER_PYTHON'] = "python2.7"
-# os.environ['SPARK_HOME'] = "/Users/karma/Documents/spark-1.6.0/"
-# os.environ['_JAVA_OPTIONS'] =  "-Xmx12288m"
-# sys.path.append("/Users/karma/Documents/spark-1.6.0/python/")
-# sys.path.append("/Users/karma/Documents/spark-1.6.0/python/lib/py4j-0.9-src.zip")
-#
-# try:
-#     # from pyspark import SparkContext
-#     # from pyspark import SQLContext
-#     # from pyspark import SparkConf
-#     # from pyspark.sql import Row
-#
-#
-#
-# except ImportError as e:
-#     print ("Error importing Spark Modules", e)
-#     sys.exit(1)
-
 def readDict(dictfile,config):
     inverted_list = {}
     inverted_index = []

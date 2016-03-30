@@ -36,7 +36,8 @@ def createGeonameDicts(refPath):
             countries.add(country)
 
         if jsonobj['a'] == 'City':
-            citites.add(jsonobj['name'].lower())
+            if 'name' in jsonobj:
+                citites.add(jsonobj['name'].lower())
     print countries
     return {'city': {x:0 for x in citites},
             'state': {x:0 for x in states},
