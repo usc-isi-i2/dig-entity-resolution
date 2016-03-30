@@ -2,11 +2,10 @@ import sys
 import re
 import json
 import faerie1
-import label
 
 # Given a path in json, return value if path, full path denoted by . (example address.name) exists, otherwise return ''
-def get_value_json(path, doc):
-    paths = path.strip().split('.')
+def get_value_json(path, doc, separator='.'):
+    paths = path.strip().split(separator)
     for field in paths:
         if field in doc:
             doc = doc[field]

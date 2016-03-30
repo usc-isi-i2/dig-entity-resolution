@@ -6,6 +6,7 @@ import test
 from pyspark.sql import Row
 from pyspark import SparkContext, SQLContext
 from Toolkit import *
+import codecs
 
 
 global EV
@@ -55,6 +56,13 @@ def scoreFieldFromDict(sdicts, mentionField, entityField, tag, priorDicts={}):
     # global EV
     score = 0.0
     # todo: add prior probabilities to deal with none fields
+    # print mentionField
+    # print entityField
+    #
+    # if mentionField is not None:
+    #     mentionField = mentionField.encode('utf-8')
+    # if entityField is not None:
+    #     entityField = entityField.encode('utf-8')
 
     if entityField is None:  # todo: find it in the dictionary and get the prior probabilities
         score = 0.1 * EV.attributes[tag]['probMissingInEntity']
@@ -243,11 +251,13 @@ def scoreCandidates(entry):
     # print("============")
     # todo: createEntity is for geoname domain only
     for candidate in entry.candidates:
-        score = scoreRecordEntity(recordEntities, createEntity(str(candidate.value)), sdicts)
+        # candidate_value = candidate.value.encode('utf-8')
+        candidate_value = candidate.value
+        score = scoreRecordEntity(recordEntities, createEntity(candidate_value), sdicts)
         # print(candidate)
         # print(score)
         # print("------------")
-        matching.append(Row(value=str(candidate.value), score=float("{0:.4f}".format(score)), uri=str(candidate.uri)))
+        matching.append(Row(value=candidate_value, score=float("{0:.4f}".format(score)), uri=str(candidate.uri)))
     matching.sort(key=lambda tup: tup.score, reverse=True)
     return Row(uri=entry.uri, value=entry.value, matches=matching)
 
@@ -614,10 +624,10 @@ if __name__ == "__main__":
     all_dict_path = args[6]
 
 
-    city_dict = json.load(open(city_dict_path))
-    all_dict = json.load(open(all_dict_path))
-    state_dict = json.load(open(state_dict_path))
+    city_dict = json.load(codecs.open(city_dict_path, 'r', 'utf-8'))
+    all_dict = json.load(codecs.open(all_dict_path, 'r', 'utf-8'))
+    state_dict = json.load(codecs.open(state_dict_path, 'r', 'utf-8'))
 
-    priorDicts = json.load(open(prior_dict_file))
+    priorDicts = json.load(codecs.open(prior_dict_file, 'r', 'utf-8'))
 
     recordLinkage(sc, input_path, output_path, priorDicts, topk, city_dict, all_dict, state_dict, False)

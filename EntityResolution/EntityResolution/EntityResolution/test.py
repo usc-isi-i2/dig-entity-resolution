@@ -20,6 +20,9 @@ def processDoc(wholecities_faerie,wholestates_faerie, dicts, line,wholecities_di
     city = line["locality"]
     state = line["region"]
     country = line["country"]
+    print city
+    print state
+    print country
     country_can = faerie1.processDoc2(uri, country, dicts["countries_dict"], 1)
 
     cities_can = search(country_can,uri,wholestates_faerie,state,dicts,wholecities_faerie,city,wholestates_dicts)
@@ -28,9 +31,10 @@ def processDoc(wholecities_faerie,wholestates_faerie, dicts, line,wholecities_di
     for entity in cities_can.entities:
         eid = entity.id
 
-        snc = wholecities_dicts[eid]["snc"]
-        temp = Row(id=eid,value=entity.value + ","+snc,start=entity.start,end=entity.end,score=entity.score)
-        jsent.append(temp)
+        snc = Toolkit.get_value_json(eid + "$snc", wholecities_dicts,'$')
+        if snc != '':
+            temp = Row(id=eid,value=entity.value + ","+snc,start=entity.start,end=entity.end,score=entity.score)
+            jsent.append(temp)
     # print cities_can
     jsdoc = Row(id=cities_can.document.id,value=cities_can.document.value + ","+state+",United States")
     jsonline = Row(document=jsdoc,entities=jsent)
