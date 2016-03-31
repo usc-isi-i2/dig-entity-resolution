@@ -1,6 +1,5 @@
 from nltk.util import ngrams
 import singleheap
-import sys
 import json
 from pyspark.sql import Row
 
@@ -186,6 +185,8 @@ def processDoc2(iden,string,dicts):
     entity_real = dicts[5]
     maxenl = dicts[6]
 
+    jsonline = {}
+
     threshold = 0.8
     n = 2
 
@@ -208,7 +209,6 @@ def processDoc2(iden,string,dicts):
     if heap:
         returnValuesFromC = singleheap.getcandidates(heap, entity_tokennum, inverted_list_len, inverted_index,
                                                          inverted_list, keys, los, maxenl, threshold)
-        jsonline = {}
         jsonline["document"] = {}
         jsonline["document"]["id"] = documentId
         jsonline["document"]["value"] = document_real
@@ -224,4 +224,7 @@ def processDoc2(iden,string,dicts):
                 jsonline["entities"][entity_realid[value[0]]] = {}
                 jsonline["entities"][entity_realid[value[0]]]["value"] = entity_real[value[0]]
                 jsonline["entities"][entity_realid[value[0]]]["candwins"] = [temp]
-        return jsonline
+    else:
+        print 'heap is empty'
+        print string
+    return jsonline

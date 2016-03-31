@@ -5,9 +5,10 @@ from optparse import OptionParser
 import test
 from pyspark.sql import Row
 from pyspark import SparkContext, SQLContext
-from Toolkit import *
 import codecs
-
+from Toolkit import getAllTokens
+from Toolkit import stringDistLev
+import json
 
 
 
@@ -260,12 +261,12 @@ def entitySimilarity(EV, e1, e2): # sdicts are created on canopy
     return score
 
 
-def recordLinkage(EV, sc, queryDocuments, outputPath, priorDicts, topk,city_dict, all_dict, state_dict, readFromFile=True):
+def recordLinkage(EV, sc, queryDocuments, outputPath, priorDicts, topk,city_dict, all_city_dict, all_dict, state_dict, readFromFile=True):
     if not readFromFile:
         num_matches = int(topk)
-        queries = test.run(sc, city_dict, all_dict,state_dict, queryDocuments)
+        queries = test.run(sc, city_dict, all_city_dict, all_dict,state_dict, queryDocuments)
 
-        queries = queries.map(lambda x: Row(uri=x.document.id,
+        queries = queries.filter(lambda x : x != '').map(lambda x: Row(uri=x.document.id,
                                                value=x.document.value,
                                                record=getAllTokens(x.document.value, 2, priorDicts),
                                                candidates=[Row(uri=xx.id,
@@ -307,4 +308,4 @@ if __name__ == "__main__":
 
     priorDicts = json.load(codecs.open(prior_dict_file, 'r', 'utf-8'))
 
-    recordLinkage(sc, input_path, output_path, priorDicts, topk, city_dict, all_city_dict, all_dict, state_dict, False)
+    recordLinkage(EV, sc, input_path, output_path, priorDicts, topk, city_dict, all_city_dict, all_dict, state_dict, False)
