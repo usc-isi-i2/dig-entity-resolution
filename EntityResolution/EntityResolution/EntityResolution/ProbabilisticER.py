@@ -282,29 +282,6 @@ def recordLinkage(sc, queryDocuments, outputPath, priorDicts, topk,city_dict, al
     result.saveAsTextFile(outputPath)
 
 if __name__ == "__main__":
-    EV = EnvVariables()
-    RLInit(EV)
-    parser = OptionParser()
-    (c_options, args) = parser.parse_args()
-    prior_dict_file = args[2]
-    priorDicts = json.load(codecs.open(prior_dict_file, 'r', 'utf-8'))
-
-    query = "San Francisco Bay Area,california,United States".lower()
-    candidates = [Row(uri="", value="San Francisco,California,United States"),
-                  Row(uri="", value="San Francisco,Provincia de Heredia,Republic of Costa Rica"),
-                  Row(uri="", value="Bay,Calabarzon,Republic of the Philippines"),
-                  Row(uri="", value="south San Francisco,California,United States"),
-                  Row(uri="", value=""),
-                  Row(uri="", value=""),
-                  Row(uri="", value=""),
-                  Row(uri="", value="")]
-
-    print(getAllTokens(query, 3, priorDicts))
-
-    print(scoreCandidates(Row(uri="", value=query,
-                        record=getAllTokens(query, 3, priorDicts),
-                        candidates=[Row(uri=x.uri, value=x.value.lower()) for x in candidates])))
-    exit(0)
     sc = SparkContext(appName="DIG-EntityResolution")
     EV = EnvVariables()
     RLInit(EV)
