@@ -165,23 +165,23 @@ def readQueriesFromFile(sparkContext, priorDicts):
     return data
 
 
-def scoreCandidates(entry):
+def scoreCandidates(EV, entry):
     sdicts = createEntrySimilarityDicts(EV, entry)
     matching = []
     # print("before effect!")
     recordEntities = reformatRecord2Entity([x for x in entry.record if len(x['tags'])!=0])
-    print(sdicts)
-    print("==============")
-    print(recordEntities)
-    print("============")
+    # print(sdicts)
+    # print("==============")
+    # print(recordEntities)
+    # print("============")
     # todo: createEntity is for geoname domain only
     for candidate in entry.candidates:
         # candidate_value = candidate.value.encode('utf-8')
         candidate_value = candidate.value
         score = scoreRecordEntity(EV, recordEntities, createEntity(candidate_value), sdicts)
-        print(candidate)
-        print(score)
-        print("------------")
+        # print(candidate)
+        # print(score)
+        # print("------------")
         matching.append(Row(value=candidate_value, score=float("{0:.4f}".format(score)), uri=str(candidate.uri)))
     matching.sort(key=lambda tup: tup.score, reverse=True)
     return Row(uri=entry.uri, value=entry.value, matches=matching)
@@ -260,7 +260,7 @@ def entitySimilarity(EV, e1, e2): # sdicts are created on canopy
     return score
 
 
-def recordLinkage(sc, queryDocuments, outputPath, priorDicts, topk,city_dict, all_dict, state_dict, readFromFile=True):
+def recordLinkage(EV, sc, queryDocuments, outputPath, priorDicts, topk,city_dict, all_dict, state_dict, readFromFile=True):
     if not readFromFile:
         num_matches = int(topk)
         queries = test.run(sc, city_dict, all_dict,state_dict, queryDocuments)
@@ -305,4 +305,4 @@ if __name__ == "__main__":
 
     priorDicts = json.load(codecs.open(prior_dict_file, 'r', 'utf-8'))
 
-    recordLinkage(sc, input_path, output_path, priorDicts, topk, city_dict, all_dict, state_dict, False)
+    recordLinkage(EV, sc, input_path, output_path, priorDicts, topk, city_dict, all_dict, state_dict, False)
