@@ -1,7 +1,7 @@
 from nltk.util import ngrams
 import singleheap
 import json
-from pyspark.sql import Row
+# from pyspark.sql import Row
 
 
 def readDict(dictfile,config):
@@ -31,16 +31,19 @@ def readDict(dictfile,config):
         # build inverted lists for tokens
         tokens = list(set(tokens))
         for token in tokens:
-            token = str(token)
+            token_n = "".join(token)
             try:
-                inverted_list[token].append(i)
-                inverted_list_len[token] += 1
+                inverted_list[token_n].append(i)
+                inverted_list_len[token_n] += 1
             except KeyError:
-                inverted_list[token] = []
-                inverted_list[token].append(i)
-                inverted_list_len[token] = 1
+                inverted_list[token_n] = []
+                inverted_list[token_n].append(i)
+                inverted_list_len[token_n] = 1
         i += 1
     return inverted_list,inverted_index,entity_tokennum,inverted_list_len,entity_realid,entity_real,maxenl
+
+def get_tokens(entity, n):
+    return ngrams(entity, n)
 
 def processDoc(line,config,dicts,runtype):
     inverted_list = dicts[0]
@@ -69,7 +72,7 @@ def processDoc(line,config,dicts,runtype):
     los = len(tokens)
     # build the heap
     for i, token in enumerate(tokens):
-        key = str(token)
+        key = "".join(token)
         keys.append(key)
         try:
             heap.append([inverted_list[key][0], i])
@@ -151,6 +154,8 @@ def readDictlist(dictlist,n):
     entity_real = {}
     maxenl = 0
 
+    result = {}
+
     i = 0
     for line in dictlist:
         entity_realid[i] = line
@@ -165,16 +170,27 @@ def readDictlist(dictlist,n):
         # build inverted lists for tokens
         tokens = list(set(tokens))
         for token in tokens:
-            token = str(token)
+            token_n = "".join(token)
             try:
-                inverted_list[token].append(i)
-                inverted_list_len[token] += 1
+                inverted_list[token_n].append(i)
+                inverted_list_len[token_n] += 1
             except KeyError:
-                inverted_list[token] = []
-                inverted_list[token].append(i)
-                inverted_list_len[token] = 1
+                inverted_list[token_n] = []
+                inverted_list[token_n].append(i)
+                inverted_list_len[token_n] = 1
         i += 1
-    return inverted_list,inverted_index,entity_tokennum,inverted_list_len,entity_realid,entity_real,maxenl
+
+    result['inverted_list'] = inverted_list
+    result['inverted_index'] = inverted_index
+    result['entity_tokennum']  = entity_tokennum
+    result['inverted_list_len'] = inverted_list_len
+    result['entity_realid'] = entity_realid
+    result['entity_real'] = entity_real
+    result['maxenl'] = maxenl
+
+    return result
+    # return [inverted_list, inverted_index, entity_tokennum, inverted_list_len, entity_realid, entity_real, maxenl]
+    # return [json.dumps(inverted_list),json.dumps(inverted_index),json.dumps(entity_tokennum),json.dumps(inverted_list_len),json.dumps(entity_realid),json.dumps(entity_real),maxenl]
 
 def processDoc2(iden,string,dicts):
     inverted_list = dicts[0]
@@ -200,7 +216,7 @@ def processDoc2(iden,string,dicts):
     los = len(tokens)
     # build the heap
     for i, token in enumerate(tokens):
-        key = str(token)
+        key = "".join(token)
         keys.append(key)
         try:
             heap.append([inverted_list[key][0], i])

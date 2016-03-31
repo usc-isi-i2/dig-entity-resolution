@@ -72,6 +72,7 @@ def createDict2(all_dict, state_dict, city_dict):
     return wholecities_dicts,wholestates_dicts, dicts
 
 
+
 if __name__ == "__main__":
     parser = OptionParser()
     parser.add_option("-r", "--separator", dest="separator", type="string",
@@ -82,7 +83,7 @@ if __name__ == "__main__":
 
     input_path = args[0]
     output_path = args[1]
-    # f1, f2, f3, f4 = createDict1(input_path)
+    f1, f2, f3, f4 = createDict1(input_path)
     # city_dict = codecs.open(output_path + "/city_dict.json", 'w')
     # city_dict.write(json.dumps(f1))
     #
@@ -91,9 +92,21 @@ if __name__ == "__main__":
     #
     # all_dict = codecs.open(output_path + "/all_dict.json", 'w')
     # all_dict.write(json.dumps(f3))
-    #
+
+
+    wcd, wsd, d = createDict2(f3, f2, f1)
+
+    wcd_faerie = codecs.open(output_path +'/city_faerie.json', 'w')
+    wcd_faerie.write(json.dumps(wcd))
+
+    wsd_faerie = codecs.open(output_path + "/state_faerie.json", 'w')
+    wsd_faerie.write(json.dumps(wsd))
+
+    d_faerie = codecs.open(output_path + "/all_dict_faerie.json", 'w')
+    d_faerie.write(json.dumps(d))
+
     # all_city_dict = codecs.open(output_path + "/all_city_dict.json", 'w')
     # all_city_dict.write(json.dumps(f4))
-
-    prior_dict = codecs.open(output_path + "/prior_dict.json", 'w')
-    prior_dict.write(create_prior_dict(input_path))
+    #
+    # prior_dict = codecs.open(output_path + "/prior_dict.json", 'w')
+    # prior_dict.write(create_prior_dict(input_path))

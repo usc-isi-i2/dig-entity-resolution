@@ -128,11 +128,11 @@ def scoreRecordEntity(EV, recordEntities, entity, similarityDicts):  # record an
 
 
 def createEntity(string):
-    args = string.strip().split(",")
+    args = string.strip().lower().split(",")
     cityname = statename = countryname = ""
-    if len(args) > 0: cityname = args[0]
-    if len(args) > 1: statename = args[1]
-    if len(args) > 2: countryname = args[2]
+    if len(args) > 0: cityname = args[0].strip()
+    if len(args) > 1: statename = args[1].strip()
+    if len(args) > 2: countryname = args[2].strip()
     return {"city": cityname, "state": statename, "country": countryname}
 
 
@@ -270,7 +270,7 @@ def recordLinkage(EV, input_rdd, outputPath, priorDicts, topk, city_dict, all_ci
                                                value=x.document.value,
                                                record=getAllTokens(x.document.value, 2, priorDicts),
                                                candidates=[Row(uri=xx.id,
-                                                               value=xx.value) for xx in x.entities]))
+                                                               value=xx.value.lower()) for xx in x.entities]))
     else:
         queries = readQueriesFromFile(sc, priorDicts)
 
@@ -299,6 +299,8 @@ if __name__ == "__main__":
     state_dict_path = args[5]
     all_dict_path = args[6]
     all_city_path = args[7]
+    city_faerie = args[8]
+    state_f
 
     input_rdd = sc.textFile(input_path)
     city_dict = json.load(codecs.open(city_dict_path, 'r', 'utf-8'))
