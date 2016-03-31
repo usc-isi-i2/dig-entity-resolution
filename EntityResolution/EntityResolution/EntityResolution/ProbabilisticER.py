@@ -297,12 +297,14 @@ if __name__ == "__main__":
     city_dict_path = args[4]
     state_dict_path = args[5]
     all_dict_path = args[6]
+    all_city_path = args[7]
 
 
     city_dict = json.load(codecs.open(city_dict_path, 'r', 'utf-8'))
     all_dict = json.load(codecs.open(all_dict_path, 'r', 'utf-8'))
     state_dict = json.load(codecs.open(state_dict_path, 'r', 'utf-8'))
+    all_city_dict = json.load(codecs.open(all_city_path, 'r', 'utf-8'))
 
     priorDicts = json.load(codecs.open(prior_dict_file, 'r', 'utf-8'))
 
-    recordLinkage(EV, sc, input_path, output_path, priorDicts, topk, city_dict, all_dict, state_dict, False)
+    recordLinkage(sc, input_path, output_path, priorDicts, topk, city_dict, all_city_dict, all_dict, state_dict, False)
