@@ -261,10 +261,10 @@ def entitySimilarity(EV, e1, e2): # sdicts are created on canopy
     return score
 
 
-def recordLinkage(EV, sc, queryDocuments, outputPath, priorDicts, topk,city_dict, all_city_dict, all_dict, state_dict, readFromFile=True):
+def recordLinkage(EV, input_rdd, outputPath, priorDicts, topk, city_dict, all_city_dict, all_dict, state_dict, readFromFile=True):
     if not readFromFile:
         num_matches = int(topk)
-        queries = test.run(sc, city_dict, all_city_dict, all_dict,state_dict, queryDocuments)
+        queries = test.run(city_dict, all_city_dict, all_dict, state_dict, input_rdd)
 
         queries = queries.filter(lambda x : x != '').map(lambda x: Row(uri=x.document.id,
                                                value=x.document.value,
@@ -300,7 +300,7 @@ if __name__ == "__main__":
     all_dict_path = args[6]
     all_city_path = args[7]
 
-
+    input_rdd = sc.textFile(input_path)
     city_dict = json.load(codecs.open(city_dict_path, 'r', 'utf-8'))
     all_dict = json.load(codecs.open(all_dict_path, 'r', 'utf-8'))
     state_dict = json.load(codecs.open(state_dict_path, 'r', 'utf-8'))
@@ -308,4 +308,4 @@ if __name__ == "__main__":
 
     priorDicts = json.load(codecs.open(prior_dict_file, 'r', 'utf-8'))
 
-    recordLinkage(EV, sc, input_path, output_path, priorDicts, topk, city_dict, all_city_dict, all_dict, state_dict, False)
+    recordLinkage(EV, input_rdd, output_path, priorDicts, topk, city_dict, all_city_dict, all_dict, state_dict, False)

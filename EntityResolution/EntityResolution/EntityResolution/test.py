@@ -13,7 +13,7 @@ import Toolkit
 
 
 
-def processDoc(wholecities_faerie,wholestates_faerie, dicts, line,wholecities_dicts,wholestates_dicts):
+def processDoc(wholecities_faerie,wholestates_faerie,dicts, line,wholecities_dicts,wholestates_dicts):
     uri = line["uri"]
     city = line["locality"]
     state = line["region"]
@@ -84,13 +84,10 @@ def searchcity(states_can,uri,city,dicts,wholecities_faerie,wholestates_dicts):
 
     return cities_can
 
-def run(sc,city_dict, all_city, all_dict, state_dict, inputpath):
+def run(city_dict, all_city, all_dict, state_dict, input_rdd):
 
     wcd,wsd, d = create_dictionaries.createDict2(all_dict, state_dict,city_dict)
-    # sc.broadcast(wsd)
-    # sc.broadcast(wcd)
-    # sc.broadcast(d)
-    lines = sc.textFile(inputpath)
-    candidates = lines.map(lambda line : processDoc(wcd,wsd,d,json.loads(line), all_city,state_dict))
+
+    candidates = input_rdd.map(lambda line : processDoc(wcd,wsd,d,json.loads(line), all_city,state_dict))
     return candidates
 
