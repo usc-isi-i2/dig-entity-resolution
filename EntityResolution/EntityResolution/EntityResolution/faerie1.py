@@ -177,7 +177,7 @@ def readDictlist(dictlist,n):
         i += 1
     return inverted_list,inverted_index,entity_tokennum,inverted_list_len,entity_realid,entity_real,maxenl
 
-def processDoc2(iden,string,dicts,runtype):
+def processDoc2(iden,string,dicts):
     inverted_list = dicts[0]
     inverted_index = dicts[1]
     entity_tokennum = dicts[2]
@@ -208,30 +208,20 @@ def processDoc2(iden,string,dicts,runtype):
     if heap:
         returnValuesFromC = singleheap.getcandidates(heap, entity_tokennum, inverted_list_len, inverted_index,
                                                          inverted_list, keys, los, maxenl, threshold)
-        if runtype == 2:
-            jsent = []
-            for value in returnValuesFromC:
-                temp = Row(id=entity_realid[value[0]],value=entity_real[value[0]],start=value[1],end=value[2],score=value[3])
-                jsent.append(temp)
-            jsdoc = Row(id=documentId,value=document_real)
-            jsonline = Row(document=jsdoc,entities=jsent)
-            return jsonline
-
-        else:
-            jsonline = {}
-            jsonline["document"] = {}
-            jsonline["document"]["id"] = documentId
-            jsonline["document"]["value"] = document_real
-            jsonline["entities"] = {}
-            for value in returnValuesFromC:
-                temp = {}
-                temp["start"] = value[1]
-                temp["end"] = value[2]
-                temp["score"] = value[3]
-                try:
-                    jsonline["entities"][entity_realid[value[0]]]["candwins"].append(temp)
-                except KeyError:
-                    jsonline["entities"][entity_realid[value[0]]] = {}
-                    jsonline["entities"][entity_realid[value[0]]]["value"] = entity_real[value[0]]
-                    jsonline["entities"][entity_realid[value[0]]]["candwins"] = [temp]
-            return jsonline
+        jsonline = {}
+        jsonline["document"] = {}
+        jsonline["document"]["id"] = documentId
+        jsonline["document"]["value"] = document_real
+        jsonline["entities"] = {}
+        for value in returnValuesFromC:
+            temp = {}
+            temp["start"] = value[1]
+            temp["end"] = value[2]
+            temp["score"] = value[3]
+            try:
+                jsonline["entities"][entity_realid[value[0]]]["candwins"].append(temp)
+            except KeyError:
+                jsonline["entities"][entity_realid[value[0]]] = {}
+                jsonline["entities"][entity_realid[value[0]]]["value"] = entity_real[value[0]]
+                jsonline["entities"][entity_realid[value[0]]]["candwins"] = [temp]
+        return jsonline
