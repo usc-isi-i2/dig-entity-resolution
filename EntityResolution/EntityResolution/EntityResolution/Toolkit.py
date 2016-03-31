@@ -1,7 +1,5 @@
-import sys
 import re
 import json
-import faerie1
 
 # Given a path in json, return value if path, full path denoted by . (example address.name) exists, otherwise return ''
 def get_value_json(path, doc, separator='.'):
@@ -16,8 +14,6 @@ def get_value_json(path, doc, separator='.'):
         return json.dumps(doc)
     else:
         return doc
-
-
 
 def createGeonameDicts(refPath):
     states = set()
@@ -85,7 +81,6 @@ def stringDistLev(seq1, seq2):
 def stringDistSmith(strG, strR): # uses smith-waterman method
         if strG is None or strR is None or len(strG) < 1 or len(strR) < 1:
             return [0.0, -1, -1, 1000, 10000]
-        # print strG + " / " + strR
         row = len(strR)
         col = len(strG)
         strR = "^" + strR
@@ -116,8 +111,6 @@ def stringDistSmith(strG, strR): # uses smith-waterman method
                     path[i][j] = "T"
                 else:
                     path[i][j] = "L"
-                # if matrix[i][j] < 0:
-                #     matrix[i][j] = 0
         max_sim = 0
         max_index = 0
         for i in range(1, row + 1):
@@ -128,12 +121,9 @@ def stringDistSmith(strG, strR): # uses smith-waterman method
         # find the path
         i = max_index
         j = col
-        # for i in range(len(path)):
-        #     print path[i]
         count_mismatch = 0
         count_gap = 0
         while j > 0:
-            # print path[i][j]
             if path[i][j] == "T":
                 i -= 1
                 count_gap += 1
@@ -150,10 +140,6 @@ def stringDistSmith(strG, strR): # uses smith-waterman method
                 count_gap = 1000
                 break
         start_index = i
-        # for i in range(len(matrix)):
-        #     print matrix[i]
-        # for i in range(len(path)):
-        #     print path[i]
         return [float(max_sim) / float(len(strG) - 1) / 2.0,
                 start_index, max_index,
                 count_gap, count_mismatch]
@@ -161,7 +147,6 @@ def stringDistSmith(strG, strR): # uses smith-waterman method
 def generateJson(query, matches, candidates_name):
         jsonObj = {"uri": str(query[0]), "name": str(query[1]), candidates_name: []}
         for match in matches:
-            # print "Match:", type(match), ", ", match
             candidate = {}
             if type(match) is list or type(match) is dict or type(match) is tuple:
                 candidate["uri"] = str(match[2])
@@ -183,45 +168,29 @@ def generateJson(query, matches, candidates_name):
 def getAllTokens(string, T=-1, dicts={}):
     if T == -1:
         T = len(string)
-
     args = re.split("[\\s,]", string)
-    # print(range(len(args)))
     id = 0
     alltokens = []
     K = len(args)
 
-    # for n in reversed(range(K)):
     for n in reversed(range(T)):
-        # print("here!")
         for i in reversed(range(n, K)):
-            # print(i)
             token = ""
             covers = []
-            jobject = {}
-            sindex = i-n
-            eindex = i
-
             for j in range(i-n, i+1):
                 token += args[j] + " "
                 covers.append(j)
-            token = token.strip()
+            token = token.strip().lower()
             if token == "":
                 continue
-            # print(token)
             tags = []
-            # if label.correct(token.lower(),dicts["city"]):
-            # if faerie1.runFordict(dicts["city"].keys(),token.lower()):
-            if token.lower() in dicts["city"]:
+            if token in dicts["city"]:
                 tags.append("city")
-            if token.lower() in dicts["state"]:
+            if token in dicts["state"]:
                 tags.append("state")
-            if token.lower() in dicts["country"]:
+            if token in dicts["country"]:
                 tags.append("country")
             jobject = {"value": token, "id": id, "covers": covers, "tags": tags}
             alltokens.append(jobject)
             id -= 1
-    # print(alltokens)
     return alltokens
-
-# convertToCSV(readFile())
-print(stringDistSmith("los angeles", "east los angeles"))
