@@ -31,8 +31,9 @@ def createGeonameDicts(refPath):
         if state != '':
             states.add(state)
 
-        country = get_value_json('address.addressRegion.address.addressCountry.name', jsonobj).lower()
+        country = get_value_json('address.addressCountry.name', jsonobj).lower()
         if country != '':
+            print country
             countries.add(country)
 
         if jsonobj['a'] == 'City':

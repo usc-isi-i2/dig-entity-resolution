@@ -100,7 +100,3 @@ def run(sc,city_dict, all_dict, state_dict, inputpath):
     candidates = lines.map(lambda line : processDoc(wcd,wsd,d,json.loads(line), city_dict,state_dict))
     return candidates
 
-# dictpath = "/Users/karma/Documents/dig-geonames/sample-data/us_cities.jl"
-# inputpath = "/Users/karma/Documents/dig-geonames/sample-data/francisco/sampleinput.jl"
-#
-# run(dictpath,inputpath)

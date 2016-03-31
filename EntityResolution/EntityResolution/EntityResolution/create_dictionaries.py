@@ -82,18 +82,18 @@ if __name__ == "__main__":
 
     input_path = args[0]
     output_path = args[1]
-    f1, f2, f3, f4 = createDict1(input_path)
-    city_dict = codecs.open(output_path + "/city_dict.json", 'w')
-    city_dict.write(json.dumps(f1))
-
-    state_dict = codecs.open(output_path + "/state_dict.json", 'w')
-    state_dict.write(json.dumps(f2))
-
-    all_dict = codecs.open(output_path + "/all_dict.json", 'w')
-    all_dict.write(json.dumps(f3))
-
-    all_city_dict = codecs.open(output_path + "/all_city_dict.json", 'w')
-    all_city_dict.write(json.dumps(f4))
+    # f1, f2, f3, f4 = createDict1(input_path)
+    # city_dict = codecs.open(output_path + "/city_dict.json", 'w')
+    # city_dict.write(json.dumps(f1))
+    #
+    # state_dict = codecs.open(output_path + "/state_dict.json", 'w')
+    # state_dict.write(json.dumps(f2))
+    #
+    # all_dict = codecs.open(output_path + "/all_dict.json", 'w')
+    # all_dict.write(json.dumps(f3))
+    #
+    # all_city_dict = codecs.open(output_path + "/all_city_dict.json", 'w')
+    # all_city_dict.write(json.dumps(f4))
 
     prior_dict = codecs.open(output_path + "/prior_dict.json", 'w')
     prior_dict.write(create_prior_dict(input_path))

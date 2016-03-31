@@ -53,16 +53,8 @@ def RLInit():
     return ""
 
 def scoreFieldFromDict(sdicts, mentionField, entityField, tag, priorDicts={}):
-    # global EV
     score = 0.0
     # todo: add prior probabilities to deal with none fields
-    # print mentionField
-    # print entityField
-    #
-    # if mentionField is not None:
-    #     mentionField = mentionField.encode('utf-8')
-    # if entityField is not None:
-    #     entityField = entityField.encode('utf-8')
 
     if entityField is None:  # todo: find it in the dictionary and get the prior probabilities
         score = 0.1 * EV.attributes[tag]['probMissingInEntity']
@@ -175,9 +167,6 @@ def scoreRecordEntity(recordEntities, entity, similarityDicts):  # record and en
     maxscore = 0
     for recenttity in recordEntities:
         score = entitySimilarityDict(recenttity, entity, similarityDicts, 'set', 'string')
-        # print(str(score) + "  " +
-        #       str(recenttity) + "  " +
-        #       str(entity))
         if maxscore < score:
             maxscore = score
     return maxscore
@@ -193,7 +182,6 @@ def createEntity(string):
 
 
 def createGlobalSimilarityDicts(entries):
-    # print(entries)
     for entry in entries:
         queryrecord = entry.candidates
         for candidate in entry.candidates:
@@ -212,7 +200,6 @@ def createEntrySimilarityDicts(entry):
     sdicts = [{} for xx in EV.allTags]
     queryrecord = entry.record
     for candidate in entry.candidates:
-        # print(candidate)
         candidateStr = candidate.value
         # todo: candidates must become in the entity format to be general
         candidateEntity = createEntity(candidateStr)
@@ -235,7 +222,6 @@ def parseQuery(query, priorDicts):
 def readQueriesFromFile(sparkContext, priorDicts):
     sqlContext = SQLContext(sparkContext)
     raw_data = sqlContext.parquetFile(EV.queriesPath)
-    # print(raw_data.printSchema())
     data = raw_data.map(lambda x: parseQuery(x, priorDicts))
     return data
 
@@ -264,7 +250,6 @@ def scoreCandidates(entry):
 
 def reformatRecord2EntityHelper(record, covered=set()):
     record = [r for r in record if not any(x in covered for x in r['covers'])]
-    # print(record)
     entities = []
     if len(record) == 0:
         return [{}]
@@ -303,15 +288,6 @@ def reformatRecord2Entity(record):
         return []
     seen = []
     res = [x for x in res if not (x in seen or seen.append(x))]
-    # newres = set()
-    # for entity in res:
-    #     newres.add(str(entity))
-    # res = []
-    # for entity in newres:
-    #     res.append(eval(entity))
-    # for entity in res:
-    #     for key, val in entity.items():
-    #         entity[key] = list(val)
     return res
 
 
@@ -359,16 +335,8 @@ def entitySimilarityDict(e1, e2, sdicts, e1type, e2type): # sdicts are created o
 
 
     for tag in (set(e1.keys()) - set(e2.keys())):
-        # if type(e1[tag]) is set:
-        #     score *= scoreFieldFromDict(sdicts, next(iter(e1[tag])), None, tag)
-        # else:
-        #     score *= scoreFieldFromDict(sdicts, e1[tag], None, tag)
         score *= scoreFieldFromDict(sdicts, "***", None, tag)
     for tag in (set(e2.keys()) - set(e1.keys())):
-        # if type(e2[tag]) is set:
-        #     score *= scoreFieldFromDict(sdicts, None, next(iter(e2[tag])), tag)
-        # else:
-        #     score *= scoreFieldFromDict(sdicts, None, e2[tag], tag)
         score *= scoreFieldFromDict(sdicts, None, "***", tag)
     return score
 
@@ -426,9 +394,6 @@ def recordSimilarity(r1, r2):
 
 
 def entityRepresentationsSimilarity(r1entities, r2entities):
-    # print("here!!")
-    # print(r1entities)
-    # print(r2entities)
     if r1entities == None or r2entities == None:
         return 0, 0, 0
     if len(r1entities) == 0 or len(r2entities) == 0:
@@ -436,10 +401,6 @@ def entityRepresentationsSimilarity(r1entities, r2entities):
     score = -1
     r1_best = -1
     r2_best = -1
-    # print(len(r1entities))
-    # print(len(r2entities))
-    # print(r1entities)
-    # print(r2entities)
     for r1_i, r1e in enumerate(r1entities):
         for r2_i, r2e in enumerate(r2entities):
             tempscore = entitySimilarity(r1e, r2e)
@@ -447,9 +408,6 @@ def entityRepresentationsSimilarity(r1entities, r2entities):
                 r1_best = r1_i
                 r2_best = r2_i
                 score = tempscore
-    # print(r1entities)
-    # print(r2entities)
-    # print("there!!!")
     return score, r1_best, r2_best
 
 
@@ -463,7 +421,6 @@ def clusterCanopiesHelper(canopy, firstIndex):
             canopy[firstIndex] = Row(uris=canopy[firstIndex].uris+r2.uris,
                             entities=mergeEntityRepresentations(canopy[firstIndex].entities, r2.entities, b1, b2))
             toberemoved.append(r2_i+1+firstIndex)
-    # print(toberemoved)
     return [i for j, i in enumerate(canopy) if j not in toberemoved]
 
 def convertToJson(xx):
@@ -474,26 +431,18 @@ def convertToJson(xx):
     return json.dumps({'cluster': clusters})
 
 def clusterCanopies(canopy): # canopy contains several entity like presented records
-    # print("here we are!!!")
-    # canopy = copy.deepcopy(canopy)
     res = []
     for r in canopy:
         res.append(Row(uris=[r.uri], entities=r.entities))
 
     for i in range(len(canopy)):
-        # print("one iteration")
-        # print(str(convertToJson(res)))
         res = clusterCanopiesHelper(res, i)
-    # print('\n\n\n')
     return res
 
 
 def mergeEntityRepresentations(rep1, rep2, index1, index2):
-    # print(str(rep1) + " " + str(rep2) + " " + str(index1) + " " + str(index2))
     if len(rep1) == 0 or len(rep2) == 0:
         return rep1+rep2
-    # rep1 = copy.copy(rep1)
-    # rep2 = copy.copy(rep2)
     ent1 = rep1[index1]
     ent2 = rep2[index2]
     del(rep1[index1])
@@ -544,20 +493,10 @@ def cleanCanopyClusters(canopy):
 
 
 def recordLinkage(sc, queryDocuments, outputPath, priorDicts, topk,city_dict, all_dict, state_dict, readFromFile=True):
-
-    # sc.broadcast(EV)
-    # sc.broadcast(priorDicts)
     if not readFromFile:
-        # temp = Row(uri="", value="blah", record=Row(city="", state="")).copy()
-        # temp['candidates'] = blah
-        # queryDocuments = sc.textFile(queryDocuments)
-        # queryDocuments = queryDocuments.map(lambda line :json.loads(line)["hasFeatureCollection"]["place_postalAddress_feature"]["featureObject"])
-        # queries = faerie.runOnSpark(sc, sys.argv[4],queryDocuments,sys.argv[3],2)
         num_matches = int(topk)
         queries = test.run(sc, city_dict, all_dict,state_dict, queryDocuments)
 
-        # queries.foreach(lambda x: testprint(priorDicts))
-        # queries.saveAsTextFile(outputPath+"pre")
         queries = queries.map(lambda x: Row(uri=x.document.id,
                                                value=x.document.value,
                                                record=getAllTokens(x.document.value, 2, priorDicts),
@@ -567,38 +506,29 @@ def recordLinkage(sc, queryDocuments, outputPath, priorDicts, topk,city_dict, al
     else:
         queries = readQueriesFromFile(sc, priorDicts)
 
-    # queries = queries.collect()
-    # for query in queries:
-    #     # print(query)
-    #     print(scoreCandidates(query))
     result = queries.map(lambda x: scoreCandidates(x))
     result = result.map(lambda x: json.dumps({'uri': x.uri,
                                               'value': x.value,
                                               'matches': [{'uri': xx.uri,
                                                            'value': xx.value,
                                                            'score': xx.score} for xx in x.matches[:num_matches]]}))
-
-    # result.printSchema()
-    # print queries.first()
     result.saveAsTextFile(outputPath)
-    # result.foreach(lambda x: testprint(x))
 
 def dataDedup(sc, queriesPath, outputPath, priorDicts):
     sqlContext = SQLContext(sc)
-    # global EV
     canopies = sqlContext.parquetFile(queriesPath)
     canopies = canopies.map(lambda x: x.candidate)
+
     # converting mentions to records
     res = canopies.map(lambda x: [Row(tokens=getAllTokens(xx.value, 2, priorDicts), uri=xx.uri) for xx in x])
     res = res.map(lambda x: [Row(entities=reformatRecord2Entity(xx.tokens), uri=xx.uri) for xx in x])
+
     # clustering canopies
     print("here we are!! "+ str(res.count()))
-    # resdump = res.collect()
-    # for xx in resdump:
-    #     clusterCanopies(xx)
-    # exit(0)
+
     res = res.map(lambda x: clusterCanopies(x))
     res = res.map(lambda x: cleanCanopyClusters(x))
+
     # converting to json format for readability
     res = res.map(lambda x: convertToJson(x))
     # saving as sequence files
