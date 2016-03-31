@@ -179,17 +179,17 @@ def readDictlist(dictlist,n):
                 inverted_list[token_n].append(i)
                 inverted_list_len[token_n] = 1
         i += 1
-
-    result['inverted_list'] = inverted_list
-    result['inverted_index'] = inverted_index
-    result['entity_tokennum']  = entity_tokennum
-    result['inverted_list_len'] = inverted_list_len
-    result['entity_realid'] = entity_realid
-    result['entity_real'] = entity_real
-    result['maxenl'] = maxenl
-
-    return result
-    # return [inverted_list, inverted_index, entity_tokennum, inverted_list_len, entity_realid, entity_real, maxenl]
+    #
+    # result['inverted_list'] = inverted_list
+    # result['inverted_index'] = inverted_index
+    # result['entity_tokennum']  = entity_tokennum
+    # result['inverted_list_len'] = inverted_list_len
+    # result['entity_realid'] = entity_realid
+    # result['entity_real'] = entity_real
+    # result['maxenl'] = maxenl
+    #
+    # return result
+    return [inverted_list, inverted_index, entity_tokennum, inverted_list_len, entity_realid, entity_real, maxenl]
     # return [json.dumps(inverted_list),json.dumps(inverted_index),json.dumps(entity_tokennum),json.dumps(inverted_list_len),json.dumps(entity_realid),json.dumps(entity_real),maxenl]
 
 def processDoc2(iden,string,dicts):
