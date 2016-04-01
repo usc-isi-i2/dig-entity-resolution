@@ -50,7 +50,7 @@ def search(country_can, uri, state, city, d):
                                                   "entities"])
                 else:
                     states_can = faerie1.processDoc2(uri, state, d.all_faerie_dict[country_uri]["states_dict"])
-            else:
+            if states_can == None or states_can == {} or states_can["entities"] == {}:
                 # if input state is empty, get the state uris from all_dicts in that country
                 states_can["entities"] = d.all_faerie_dict[country_uri]["states_dict"][4].values()
 
