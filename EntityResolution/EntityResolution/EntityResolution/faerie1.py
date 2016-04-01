@@ -1,7 +1,6 @@
 from nltk.util import ngrams
 import singleheap
 import json
-import time
 from pyspark.sql import Row
 
 
@@ -198,7 +197,7 @@ def processDoc2(iden,string,dicts):
 
     jsonline = {}
     if string.strip() != '':
-        start_time = time.clock()
+        # start_time = time.clock()
         inverted_list = dicts[0]
         inverted_index = dicts[1]
         entity_tokennum = dicts[2]
@@ -250,5 +249,5 @@ def processDoc2(iden,string,dicts):
             print 'heap is empty'
             print string
 
-        print "Generation ccans for " + string + " in " + str((time.clock()-start_time)*1000)
+        # print "Generation ccans for " + string + " in " + str((time.clock()-start_time)*1000)
     return jsonline

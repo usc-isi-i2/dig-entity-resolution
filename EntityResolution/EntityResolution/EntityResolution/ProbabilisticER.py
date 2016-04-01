@@ -11,7 +11,6 @@ from Toolkit import stringDistLev
 import json
 
 
-
 class EnvVariables:
     outputPath = ""
     queriesPath = ""
@@ -185,7 +184,7 @@ def scoreCandidates(EV, entry):
         # print("------------")
         matching.append(Row(value=candidate_value, score=float("{0:.4f}".format(score)), uri=str(candidate.uri)))
     matching.sort(key=lambda tup: tup.score, reverse=True)
-    return Row(uri=entry.uri, value=entry.value, matches=matching)
+    return Row(uri=entry.uri, value=entry.value, matches=matching, processtime=entry.processtime)
 
 
 def reformatRecord2EntityHelper(record, covered=set()):
@@ -260,24 +259,25 @@ def entitySimilarity(EV, e1, e2): # sdicts are created on canopy
         score *= scoreField(EV, next(iter(e2[tag])), None, tag)
     return score
 
+def create_row(x, d):
+    print x.processtime
+    return Row(processtime=x.processtime, uri=x.document.id, value=x.document.value, record=getAllTokens(x.document.value, 2, d.value.priorDicts), candidates=[Row(uri=xx.id, value=xx.value.lower()) for xx in x.entities])
 
 def recordLinkage(EV, input_rdd, outputPath, topk, d, readFromFile=True):
     if not readFromFile:
         num_matches = int(topk)
-        queries = test.run(d, input_rdd)
-        # queries = test.run(city_dict, all_city_dict, all_dict, state_dict, input_rdd)
 
-        queries = queries.filter(lambda x : x != '').map(lambda x: Row(uri=x.document.id,
-                                               value=x.document.value,
-                                               record=getAllTokens(x.document.value, 2, d.priorDicts),
-                                               candidates=[Row(uri=xx.id,
-                                                               value=xx.value.lower()) for xx in x.entities]))
+        queries = test.run(d, input_rdd)
+
+        queries = queries.filter(lambda x : x != '').map(lambda x:create_row(x, d))
+        # sys.exit(0)
     else:
-        queries = readQueriesFromFile(sc, d.priorDicts)
+        queries = readQueriesFromFile(sc, d.value.priorDicts)
 
     result = queries.map(lambda x: scoreCandidates(EV, x))
     result = result.map(lambda x: json.dumps({'uri': x.uri,
                                               'value': x.value,
+                                              'process_time': x.processtime,
                                               'matches': [{'uri': xx.uri,
                                                            'value': xx.value,
                                                            'score': xx.score} for xx in x.matches[:num_matches]]}))
@@ -304,6 +304,7 @@ if __name__ == "__main__":
 
     input_rdd = sc.textFile(input_path)
 
-    d = D(sc, state_dict_path, all_city_path, city_faerie, state_faerie, all_faerie, prior_dict_file)
+    dictc = D(sc, state_dict_path, all_city_path, city_faerie, state_faerie, all_faerie, prior_dict_file)
+    d = sc.broadcast(dictc)
 
     recordLinkage(EV, input_rdd, output_path, topk, d, False)
