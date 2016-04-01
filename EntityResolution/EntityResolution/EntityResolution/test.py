@@ -1,6 +1,5 @@
 import json
 import faerie1
-import create_dictionaries
 from pyspark.sql import Row
 import Toolkit
 
@@ -13,20 +12,20 @@ import Toolkit
 
 
 
-def processDoc(wholecities_faerie,wholestates_faerie,dicts, line,wholecities_dicts,wholestates_dicts):
+def processDoc(d, line):
     uri = line["uri"]
     city = line["locality"]
     state = line["region"]
     country = line["country"]
-    country_can = faerie1.processDoc2(uri, country, dicts["countries_dict"])
+    country_can = faerie1.processDoc2(uri, country, d.all_faerie_dict["countries_dict"])
 
-    cities_can = search(country_can,uri,wholestates_faerie,state,dicts,wholecities_faerie,city,wholestates_dicts)
+    cities_can = search(country_can, uri, state, city, d)
 
     jsent = []
     if cities_can and 'entities' in cities_can:
         for eid in cities_can["entities"]:
             entity = cities_can["entities"][eid]
-            snc = Toolkit.get_value_json(eid + "$snc", wholecities_dicts,'$')
+            snc = Toolkit.get_value_json(eid + "$snc", d.all_city_dict,'$')
             if snc != '':
                 temp = Row(id=eid,value=entity["value"] + ","+snc,candwins=entity["candwins"])
                 jsent.append(temp)
@@ -39,7 +38,7 @@ def processDoc(wholecities_faerie,wholestates_faerie,dicts, line,wholecities_dic
 
     return ''
 
-def search(country_can,uri,wholestates_faerie,state,dicts,wholecities_faerie,city,wholestates_dicts):
+def search(country_can, uri, state, city, d):
     states_can = {}
     cities_can = {}
     if country_can and country_can != {} and country_can["entities"] != {}:
@@ -47,47 +46,45 @@ def search(country_can,uri,wholestates_faerie,state,dicts,wholecities_faerie,cit
             if state != "":
                 if 'entities' in states_can:
                     states_can["entities"] = dict(states_can["entities"],
-                                          **faerie1.processDoc2(uri, state, dicts[country_uri]["states_dict"])[
+                                          **faerie1.processDoc2(uri, state, d.all_faerie_dict[country_uri]["states_dict"])[
                                                   "entities"])
                 else:
-                    states_can = faerie1.processDoc2(uri, state, dicts[country_uri]["states_dict"])
+                    states_can = faerie1.processDoc2(uri, state, d.all_faerie_dict[country_uri]["states_dict"])
             else:
                 # if input state is empty, get the state uris from all_dicts in that country
-                states_can["entities"] = dicts[country_uri]["states_dict"][4].values()
+                states_can["entities"] = d.all_faerie_dict[country_uri]["states_dict"][4].values()
 
-            cities_can = searchcity(states_can,uri,city,dicts,wholecities_faerie,wholestates_dicts)
+            cities_can = searchcity(states_can,uri,city, d)
     else:
         if state != "":
-            states_can = faerie1.processDoc2(uri, state, wholestates_faerie)
+            states_can = faerie1.processDoc2(uri, state, d.state_faerie_dict)
 
-        cities_can = searchcity(states_can, uri, city, dicts, wholecities_faerie, wholestates_dicts)
+        cities_can = searchcity(states_can, uri, city, d)
 
     return cities_can
 
 
-def searchcity(states_can,uri,city,dicts,wholecities_faerie,wholestates_dicts):
+def searchcity(states_can, uri, city, d):
     cities_can = {}
     if states_can and states_can != {} and states_can["entities"] != {}:
         for state_uri in states_can["entities"]:
-            country_uri = wholestates_dicts[state_uri]["country_uri"]
+            country_uri = d.state_dict[state_uri]["country_uri"]
             if country_uri != '':
                 if 'entities' in cities_can:
                     cities_can["entities"] = dict(cities_can["entities"],
-                                              **faerie1.processDoc2(uri, city, dicts[country_uri][state_uri]["cities"])[
+                                              **faerie1.processDoc2(uri, city, d.all_faerie_dict[country_uri][state_uri]["cities"])[
                                                   "entities"])
                 else:
-                    cities_can = faerie1.processDoc2(uri, city, dicts[country_uri][state_uri]["cities"])
+                    cities_can = faerie1.processDoc2(uri, city, d.all_faerie_dict[country_uri][state_uri]["cities"])
             else:
                 print "Line 73:" + state_uri
     else:
-        cities_can = faerie1.processDoc2(uri,city,wholecities_faerie)
+        cities_can = faerie1.processDoc2(uri,city,d.city_faerie_dict)
 
     return cities_can
 
-def run(city_dict, all_city, all_dict, state_dict, input_rdd):
+def run(d, input_rdd):
 
-    wcd,wsd, d = create_dictionaries.createDict2(all_dict, state_dict,city_dict)
-
-    candidates = input_rdd.map(lambda line : processDoc(wcd,wsd,d,json.loads(line), all_city,state_dict))
+    candidates = input_rdd.map(lambda line : processDoc(d, json.loads(line)))
     return candidates
 

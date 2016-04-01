@@ -1,7 +1,8 @@
 from nltk.util import ngrams
 import singleheap
 import json
-# from pyspark.sql import Row
+import time
+from pyspark.sql import Row
 
 
 def readDict(dictfile,config):
@@ -101,12 +102,13 @@ def processDoc(line,config,dicts,runtype):
                 temp["start"] = value[1]
                 temp["end"] = value[2]
                 temp["score"] = value[3]
+                value_o = str(value[0])
                 try:
-                    jsonline["entities"][entity_realid[value[0]]]["candwins"].append(temp)
+                    jsonline["entities"][entity_realid[value_o]]["candwins"].append(temp)
                 except KeyError:
-                    jsonline["entities"][entity_realid[value[0]]] = {}
-                    jsonline["entities"][entity_realid[value[0]]]["value"] = entity_real[value[0]]
-                    jsonline["entities"][entity_realid[value[0]]]["candwins"] = [temp]
+                    jsonline["entities"][entity_realid[value_o]] = {}
+                    jsonline["entities"][entity_realid[value_o]]["value"] = entity_real[value_o]
+                    jsonline["entities"][entity_realid[value_o]]["candwins"] = [temp]
             print json.dumps(jsonline)
 
 def run(dictfile, inputfile, configfile):
@@ -154,7 +156,7 @@ def readDictlist(dictlist,n):
     entity_real = {}
     maxenl = 0
 
-    result = {}
+    # result = {}
 
     i = 0
     for line in dictlist:
@@ -193,54 +195,60 @@ def readDictlist(dictlist,n):
     # return [json.dumps(inverted_list),json.dumps(inverted_index),json.dumps(entity_tokennum),json.dumps(inverted_list_len),json.dumps(entity_realid),json.dumps(entity_real),maxenl]
 
 def processDoc2(iden,string,dicts):
-    inverted_list = dicts[0]
-    inverted_index = dicts[1]
-    entity_tokennum = dicts[2]
-    inverted_list_len = dicts[3]
-    entity_realid = dicts[4]
-    entity_real = dicts[5]
-    maxenl = dicts[6]
 
     jsonline = {}
+    if string.strip() != '':
+        start_time = time.clock()
+        inverted_list = dicts[0]
+        inverted_index = dicts[1]
+        entity_tokennum = dicts[2]
+        inverted_list_len = dicts[3]
+        entity_realid = dicts[4]
+        entity_real = dicts[5]
+        maxenl = dicts[6]
 
-    threshold = 0.8
-    n = 2
+        threshold = 0.8
+        n = 2
 
-    documentId = iden
-    document_real = string
+        documentId = iden
+        document_real = string
 
-    document = document_real.lower().strip()
-    tokens = list(ngrams(document, n))
-    heap = []
-    keys = []
-    los = len(tokens)
-    # build the heap
-    for i, token in enumerate(tokens):
-        key = "".join(token)
-        keys.append(key)
-        try:
-            heap.append([inverted_list[key][0], i])
-        except KeyError:
-            pass
-    if heap:
-        returnValuesFromC = singleheap.getcandidates(heap, entity_tokennum, inverted_list_len, inverted_index,
-                                                         inverted_list, keys, los, maxenl, threshold)
-        jsonline["document"] = {}
-        jsonline["document"]["id"] = documentId
-        jsonline["document"]["value"] = document_real
-        jsonline["entities"] = {}
-        for value in returnValuesFromC:
-            temp = {}
-            temp["start"] = value[1]
-            temp["end"] = value[2]
-            temp["score"] = value[3]
+        document = document_real.lower().strip()
+        tokens = list(ngrams(document, n))
+        heap = []
+        keys = []
+        los = len(tokens)
+        # build the heap
+        for i, token in enumerate(tokens):
+            key = "".join(token)
+            keys.append(key)
             try:
-                jsonline["entities"][entity_realid[value[0]]]["candwins"].append(temp)
+                heap.append([inverted_list[key][0], i])
             except KeyError:
-                jsonline["entities"][entity_realid[value[0]]] = {}
-                jsonline["entities"][entity_realid[value[0]]]["value"] = entity_real[value[0]]
-                jsonline["entities"][entity_realid[value[0]]]["candwins"] = [temp]
-    else:
-        print 'heap is empty'
-        print string
+                pass
+        if heap:
+            returnValuesFromC = singleheap.getcandidates(heap, entity_tokennum, inverted_list_len, inverted_index,
+                                                             inverted_list, keys, los, maxenl, threshold)
+            jsonline["document"] = {}
+            jsonline["document"]["id"] = documentId
+            jsonline["document"]["value"] = document_real
+            jsonline["entities"] = {}
+            for value in returnValuesFromC:
+
+                temp = {}
+                temp["start"] = value[1]
+                temp["end"] = value[2]
+                temp["score"] = value[3]
+                value_o = str(value[0])
+                try:
+                    jsonline["entities"][entity_realid[value_o]]["candwins"].append(temp)
+                except KeyError:
+                    jsonline["entities"][entity_realid[value_o]] = {}
+                    jsonline["entities"][entity_realid[value_o]]["value"] = entity_real[value_o]
+                    jsonline["entities"][entity_realid[value_o]]["candwins"] = [temp]
+        else:
+            print 'heap is empty'
+            print string
+
+        print "Generation ccans for " + string + " in " + str((time.clock()-start_time)*1000)
     return jsonline

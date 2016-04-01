@@ -5,7 +5,7 @@ from optparse import OptionParser
 import test
 from pyspark.sql import Row
 from pyspark import SparkContext, SQLContext
-import codecs
+from dictionaries import D
 from Toolkit import getAllTokens
 from Toolkit import stringDistLev
 import json
@@ -261,18 +261,19 @@ def entitySimilarity(EV, e1, e2): # sdicts are created on canopy
     return score
 
 
-def recordLinkage(EV, input_rdd, outputPath, priorDicts, topk, city_dict, all_city_dict, all_dict, state_dict, readFromFile=True):
+def recordLinkage(EV, input_rdd, outputPath, topk, d, readFromFile=True):
     if not readFromFile:
         num_matches = int(topk)
-        queries = test.run(city_dict, all_city_dict, all_dict, state_dict, input_rdd)
+        queries = test.run(d, input_rdd)
+        # queries = test.run(city_dict, all_city_dict, all_dict, state_dict, input_rdd)
 
         queries = queries.filter(lambda x : x != '').map(lambda x: Row(uri=x.document.id,
                                                value=x.document.value,
-                                               record=getAllTokens(x.document.value, 2, priorDicts),
+                                               record=getAllTokens(x.document.value, 2, d.priorDicts),
                                                candidates=[Row(uri=xx.id,
                                                                value=xx.value.lower()) for xx in x.entities]))
     else:
-        queries = readQueriesFromFile(sc, priorDicts)
+        queries = readQueriesFromFile(sc, d.priorDicts)
 
     result = queries.map(lambda x: scoreCandidates(EV, x))
     result = result.map(lambda x: json.dumps({'uri': x.uri,
@@ -295,19 +296,14 @@ if __name__ == "__main__":
     output_path = args[1]
     prior_dict_file = args[2]
     topk = args[3]
-    city_dict_path = args[4]
-    state_dict_path = args[5]
-    all_dict_path = args[6]
-    all_city_path = args[7]
-    city_faerie = args[8]
-    state_f
+    state_dict_path = args[4]
+    all_city_path = args[5]
+    city_faerie = args[6]
+    state_faerie = args[7]
+    all_faerie = args[8]
 
     input_rdd = sc.textFile(input_path)
-    city_dict = json.load(codecs.open(city_dict_path, 'r', 'utf-8'))
-    all_dict = json.load(codecs.open(all_dict_path, 'r', 'utf-8'))
-    state_dict = json.load(codecs.open(state_dict_path, 'r', 'utf-8'))
-    all_city_dict = json.load(codecs.open(all_city_path, 'r', 'utf-8'))
 
-    priorDicts = json.load(codecs.open(prior_dict_file, 'r', 'utf-8'))
+    d = D(sc, state_dict_path, all_city_path, city_faerie, state_faerie, all_faerie, prior_dict_file)
 
-    recordLinkage(EV, input_rdd, output_path, priorDicts, topk, city_dict, all_city_dict, all_dict, state_dict, False)
+    recordLinkage(EV, input_rdd, output_path, topk, d, False)
