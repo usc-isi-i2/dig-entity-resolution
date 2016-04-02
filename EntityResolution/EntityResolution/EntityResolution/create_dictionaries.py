@@ -18,7 +18,9 @@ def createDict1(path):
         line = json.loads(line)
         if 'name' in line:
             city = line["name"]
+            population = line['populationOfArea']
             print city + " " + line['alternateName']
+            print
             city_uri = line["uri"]
             try:
                 state = line["address"]["addressRegion"]["name"]
@@ -46,13 +48,15 @@ def createDict1(path):
                 country = ""
 
 
-            if int(line["populationOfArea"]) >= 25000:
+            if int(population) >= 25000:
                 wholecities_dicts[city_uri] = {}
                 wholecities_dicts[city_uri]["name"] = city
                 wholecities_dicts[city_uri]["snc"] = state + "," + country
+                wholecities_dicts[city_uri]['populationOfArea'] = population
             all_cities_dict[city_uri] = {}
             all_cities_dict[city_uri]['name'] = city
             all_cities_dict[city_uri]['snc'] = state + "," + country
+            all_cities_dict[city_uri]['populationOfArea'] = population
 
     return wholecities_dicts, wholestates_dicts, dicts, all_cities_dict
 

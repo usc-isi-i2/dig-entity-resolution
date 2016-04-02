@@ -260,7 +260,6 @@ def entitySimilarity(EV, e1, e2): # sdicts are created on canopy
     return score
 
 def create_row(x, d):
-    print x.processtime
     return Row(processtime=x.processtime, uri=x.document.id, value=x.document.value, record=getAllTokens(x.document.value, 2, d.value.priorDicts), candidates=[Row(uri=xx.id, value=xx.value.lower()) for xx in x.entities])
 
 def recordLinkage(EV, input_rdd, outputPath, topk, d, readFromFile=True):

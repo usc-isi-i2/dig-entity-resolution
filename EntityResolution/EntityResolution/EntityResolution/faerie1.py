@@ -161,7 +161,6 @@ def readDictlist(dictlist,n):
     for line in dictlist:
         entity_realid[i] = line
         entity_real[i] = dictlist[line]["name"]
-
         entity = entity_real[i].lower().strip()
         inverted_index.append(entity)  # record each entity and its id
         tokens = list(ngrams(entity, n))
