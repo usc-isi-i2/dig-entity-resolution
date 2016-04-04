@@ -193,4 +193,4 @@ def getAllTokens(string, T=-1, dicts={}):
             jobject = {"value": token, "id": id, "covers": covers, "tags": tags}
             alltokens.append(jobject)
             id -= 1
-    return alltokens
+    return alltokens, K

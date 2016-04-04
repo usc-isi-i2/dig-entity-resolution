@@ -1,3 +1,6 @@
 {
-  "spark_path": "/Users/majid/Downloads/spark-1.6.0/"
+  "spark_path": "/Users/majid/Downloads/spark-1.6.0/",
+  "tokenizer_granularity": 3,
+  "RecordLeftoverPenalty": 0.7,
+  "mergeThreshold": 0.8
 }

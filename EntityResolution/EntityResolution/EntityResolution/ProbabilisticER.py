@@ -9,6 +9,8 @@ from dictionaries import D
 from Toolkit import getAllTokens
 from Toolkit import stringDistLev
 import json
+import math
+import codecs
 
 
 class EnvVariables:
@@ -20,15 +22,15 @@ class EnvVariables:
     similarityDicts = []
     RecordLeftoverPenalty = 0.7
     mergeThreshold = 0.5
-    sparkPath = ""
+    tokLen = -1
 
 
 def readEnvConfig(EV, cpath):
     jobject = json.loads(open(cpath).read())
-    EV.sparkPath = jobject['spark_path']
+    EV.tokLen = jobject['tokenizer_granularity']
     EV.similarityDicts = [{} for xx in EV.allTags]
-    EV.RecordLeftoverPenalty = 0.7
-    EV.mergeThreshold = 0.5
+    EV.RecordLeftoverPenalty = jobject['RecordLeftoverPenalty']
+    EV.mergeThreshold = jobject['mergeThreshold']
 
 
 def readAttrConfig(EV, cpath):
@@ -57,6 +59,7 @@ def RLInit(EV):
 
 def scoreFieldFromDict(EV, sdicts, mentionField, entityField, tag, priorDicts={}):
     score = 0.0
+    covered = 0
     # todo: add prior probabilities to deal with none fields
 
     if entityField is None:  # todo: find it in the dictionary and get the prior probabilities
@@ -73,6 +76,7 @@ def scoreFieldFromDict(EV, sdicts, mentionField, entityField, tag, priorDicts={}
                         temp = scoreFieldValueFromDict(EV, sdicts, xx, yy, tag)
                         if temp > tempscore:
                             tempscore = temp
+                            covered = len(xx.strip().split())
                 score = tempscore
             else:
                 tempscore = 0
@@ -80,6 +84,7 @@ def scoreFieldFromDict(EV, sdicts, mentionField, entityField, tag, priorDicts={}
                     temp = scoreFieldValueFromDict(EV, sdicts, xx, entityField, tag)
                     if temp > tempscore:
                         tempscore = temp
+                        covered = len(xx.strip().split())
                 score = tempscore
         else:
             if type(entityField) is set:
@@ -88,11 +93,12 @@ def scoreFieldFromDict(EV, sdicts, mentionField, entityField, tag, priorDicts={}
                     temp = scoreFieldValueFromDict(EV, sdicts, mentionField, yy, tag)
                     if temp > tempscore:
                         tempscore = temp
+                        covered = len(entityField.strip().split())
                 score = tempscore
             else:
-
+                covered = len(entityField.strip().split())
                 score = scoreFieldValueFromDict(EV, sdicts, mentionField, entityField, tag)
-    return score
+    return score, covered
 
 def scoreFieldValueFromDict(EV, sdicts, mentionVal, entityVal, tag):
     if EV.attributes[tag]['type'] == "string":
@@ -119,11 +125,13 @@ def scoreField(EV, mentionField, entityField, tag):
 
 def scoreRecordEntity(EV, recordEntities, entity, similarityDicts):  # record and entity are the same json format
     maxscore = 0
+    maxcovered = 0
     for recenttity in recordEntities:
-        score = entitySimilarityDict(EV, recenttity, entity, similarityDicts)
+        score, covered = entitySimilarityDict(EV, recenttity, entity, similarityDicts)
         if maxscore < score:
             maxscore = score
-    return maxscore
+            maxcovered = covered
+    return maxscore, maxcovered
 
 
 def createEntity(string):
@@ -137,7 +145,7 @@ def createEntity(string):
 
 def createEntrySimilarityDicts(EV, entry):
     sdicts = [{} for xx in EV.allTags]
-    queryrecord = entry.record
+    queryrecord = entry.record[0]
     for candidate in entry.candidates:
         candidateStr = candidate.value
         # todo: candidates must become in the entity format to be general
@@ -165,11 +173,11 @@ def readQueriesFromFile(sparkContext, priorDicts):
     return data
 
 
-def scoreCandidates(EV, entry):
+def scoreCandidates(EV, entry, all_city_dict):
     sdicts = createEntrySimilarityDicts(EV, entry)
     matching = []
     # print("before effect!")
-    recordEntities = reformatRecord2Entity([x for x in entry.record if len(x['tags'])!=0])
+    recordEntities = reformatRecord2Entity([x for x in entry.record[0] if len(x['tags'])!=0])
     # print(sdicts)
     # print("==============")
     # print(recordEntities)
@@ -178,12 +186,18 @@ def scoreCandidates(EV, entry):
     for candidate in entry.candidates:
         # candidate_value = candidate.value.encode('utf-8')
         candidate_value = candidate.value
-        score = scoreRecordEntity(EV, recordEntities, createEntity(candidate_value), sdicts)
+        score, covered = scoreRecordEntity(EV, recordEntities, createEntity(candidate_value), sdicts)
+        notcovered = entry.record[1] - covered
         # print(candidate)
         # print(score)
         # print("------------")
-        matching.append(Row(value=candidate_value, score=float("{0:.4f}".format(score)), uri=str(candidate.uri)))
-    matching.sort(key=lambda tup: tup.score, reverse=True)
+        population = int(all_city_dict[candidate.uri]['populationOfArea'])+ \
+                        (1000000 if all_city_dict[candidate.uri]['snc'].lower() == 'united states' else 0)
+        matching.append(Row(value=candidate_value, score=float("{0:.4f}".format(score * (1.0 - 1.0/math.log(population + 1000))
+                                                                                * (1.0 - notcovered/100.0))),
+                            uri=str(candidate.uri), leftover=notcovered,
+                            prior=population))
+    matching.sort(key=lambda tup: (tup.score, tup.prior), reverse=True)
     return Row(uri=entry.uri, value=entry.value, matches=matching, processtime=entry.processtime)
 
 
@@ -231,15 +245,23 @@ def reformatRecord2Entity(record):
 
 def entitySimilarityDict(EV, e1, e2, sdicts): # sdicts are created on canopy
     score = 1.0
-
+    covered = 0
     for tag in e1:
         if tag in e2:
-            score *= scoreFieldFromDict(EV, sdicts, e1[tag], e2[tag], tag)
+            tempscore, tempcovered = scoreFieldFromDict(EV, sdicts, e1[tag], e2[tag], tag)
+            score *= tempscore
+            covered += tempcovered
     for tag in (set(e1.keys()) - set(e2.keys())):
-        score *= scoreFieldFromDict(EV, sdicts, "***", None, tag)
+        tempscore, tempcovered = scoreFieldFromDict(EV, sdicts, "***", None, tag)
+        score *= tempscore
+        covered += tempcovered
+        # score *= scoreFieldFromDict(EV, sdicts, "***", None, tag)
     for tag in (set(e2.keys()) - set(e1.keys())):
-        score *= scoreFieldFromDict(EV, sdicts, None, "***", tag)
-    return score
+        tempscore, tempcovered = scoreFieldFromDict(EV, sdicts, None, "***", tag)
+        score *= tempscore
+        covered += tempcovered
+        # score *= scoreFieldFromDict(EV, sdicts, None, "***", tag)
+    return score, covered
 
 
 def entitySimilarity(EV, e1, e2): # sdicts are created on canopy
@@ -259,8 +281,11 @@ def entitySimilarity(EV, e1, e2): # sdicts are created on canopy
         score *= scoreField(EV, next(iter(e2[tag])), None, tag)
     return score
 
-def create_row(x, d):
-    return Row(processtime=x.processtime, uri=x.document.id, value=x.document.value, record=getAllTokens(x.document.value, 2, d.value.priorDicts), candidates=[Row(uri=xx.id, value=xx.value.lower()) for xx in x.entities])
+def create_row(EV, x, d):
+    print x.processtime
+    return Row(processtime=x.processtime, uri=x.document.id,
+               value=x.document.value, record=getAllTokens(x.document.value, EV.tokLen, d.value.priorDicts),
+               candidates=[Row(uri=xx.id, value=xx.value.lower()) for xx in x.entities])
 
 def recordLinkage(EV, input_rdd, outputPath, topk, d, readFromFile=True):
     if not readFromFile:
@@ -268,12 +293,12 @@ def recordLinkage(EV, input_rdd, outputPath, topk, d, readFromFile=True):
 
         queries = test.run(d, input_rdd)
 
-        queries = queries.filter(lambda x : x != '').map(lambda x:create_row(x, d))
+        queries = queries.filter(lambda x : x != '').map(lambda x:create_row(EV, x, d))
         # sys.exit(0)
     else:
         queries = readQueriesFromFile(sc, d.value.priorDicts)
 
-    result = queries.map(lambda x: scoreCandidates(EV, x))
+    result = queries.map(lambda x: scoreCandidates(EV, x, d.value.all_city_dict))
     result = result.map(lambda x: json.dumps({'uri': x.uri,
                                               'value': x.value,
                                               'process_time': x.processtime,
