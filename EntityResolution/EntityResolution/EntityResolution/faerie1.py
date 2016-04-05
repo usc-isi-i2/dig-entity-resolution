@@ -166,7 +166,7 @@ def readDictlist(dictlist,n):
         for name in names:
             entity_realid[i] = line
             entity_real[i] = name
-            entity = entity_real[i].lower().strip()
+            entity = entity_real[i].lower().strip().replace(" ","")
             inverted_index.append(entity)  # record each entity and its id
             tokens = list(ngrams(entity, n))
             entity_tokennum[entity] = len(tokens)  # record each entity's token number
@@ -216,7 +216,7 @@ def processDoc2(iden,string,dicts):
         documentId = iden
         document_real = string
 
-        document = document_real.lower().strip()
+        document = document_real.lower().strip().replace(" ","")
         tokens = list(ngrams(document, n))
         heap = []
         keys = []
