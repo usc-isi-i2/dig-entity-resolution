@@ -102,10 +102,9 @@ def scoreFieldFromDict(EV, sdicts, mentionField, entityField, tag, priorDicts={}
 
 def scoreFieldValueFromDict(EV, sdicts, mentionVal, entityVal, tag):
     if EV.attributes[tag]['type'] == "string":
-        ii = EV.allTags.index(tag)
         key = entityVal+mentionVal
-        if key in sdicts[ii]:
-            return sdicts[ii][key]
+        if key in sdicts[tag]:
+            return sdicts[tag][key]
     return 0
 
 # todo: make it based on probabilities
@@ -144,18 +143,26 @@ def createEntity(string):
 
 
 def createEntrySimilarityDicts(EV, entry):
-    sdicts = [{} for xx in EV.allTags]
+    sdicts = {}
+    for xx in EV.allTags:
+        sdicts.update({xx:{}})
     queryrecord = entry.record[0]
     for candidate in entry.candidates:
         candidateStr = candidate.value
         # todo: candidates must become in the entity format to be general
         candidateEntity = createEntity(candidateStr)
         for record in queryrecord:
-                for tag_i, tag in enumerate(EV.allTags):
+                for tag in EV.allTags:
                     if tag in record['tags']:
-                        key = candidateEntity[tag] + str(record['value'])
-                        if key not in sdicts[tag_i]:
-                            sdicts[tag_i].update({key: scoreField(EV, record['value'], candidateEntity[tag], tag)})
+                        if tag == 'UNK':
+                            for tag_ in candidateEntity:
+                                key = candidateEntity[tag_] + str(record['value'])
+                                if key not in sdicts[tag_]:
+                                    sdicts[tag_].update({key: scoreField(EV, record['value'], candidateEntity[tag_], tag_)})
+                        else:
+                            key = candidateEntity[tag] + str(record['value'])
+                            if key not in sdicts[tag]:
+                                sdicts[tag].update({key: scoreField(EV, record['value'], candidateEntity[tag], tag)})
     return sdicts
 
 
@@ -188,7 +195,7 @@ def scoreCandidates(EV, entry, all_city_dict):
         candidate_value = candidate.value
         score, covered = scoreRecordEntity(EV, recordEntities, createEntity(candidate_value), sdicts)
         notcovered = entry.record[1] - covered
-        print(str(entry.record[1]) + "  " + str(covered))
+        # print(str(entry.record[1]) + "  " + str(covered))
         # print(candidate)
         # print(score)
         # print("------------")
@@ -244,44 +251,60 @@ def reformatRecord2Entity(record):
     return res
 
 
-def entitySimilarityDict(EV, e1, e2, sdicts): # sdicts are created on canopy
+def entitySimilarityDict(EV, e1, e2, sdicts): # sdicts are created on canopy, e1 is the mention, e2 is the entity
+    coveredTags = set()
     score = 1.0
     covered = 0
     for tag in e1:
         if tag in e2:
+            coveredTags.add(tag)
             tempscore, tempcovered = scoreFieldFromDict(EV, sdicts, e1[tag], e2[tag], tag)
             score *= tempscore
             covered += tempcovered
-    for tag in (set(e1.keys()) - set(e2.keys())):
-        tempscore, tempcovered = scoreFieldFromDict(EV, sdicts, "***", None, tag)
-        score *= tempscore
-        covered += tempcovered
-        # score *= scoreFieldFromDict(EV, sdicts, "***", None, tag)
-    for tag in (set(e2.keys()) - set(e1.keys())):
+    if 'UNK' in e1:
+        maxScore = 0
+        maxCovered = 0
+        maxTag = ""
+        for tag in (set(e2.keys()) - coveredTags):
+            tempscore, tempcovered = scoreFieldFromDict(EV, sdicts, e1['UNK'], e2[tag], tag)
+            if maxScore < tempscore:
+                maxScore = tempscore
+                maxCovered = tempcovered
+                maxTag = tag
+        # print str(score) + " " + tag + " " + str(maxScore)
+        if maxScore > 0.9:
+            coveredTags.add(maxTag)
+            score *= maxScore * 0.9 # todo: refine tag difference penalty
+            covered += maxCovered
+    # for tag in (set(e1.keys()) - set(e2.keys())):
+    #     tempscore, tempcovered = scoreFieldFromDict(EV, sdicts, "***", None, tag)
+    #     score *= tempscore
+    #     covered += tempcovered
+    #     # score *= scoreFieldFromDict(EV, sdicts, "***", None, tag)
+    for tag in (set(e2.keys()) - coveredTags):
         tempscore, tempcovered = scoreFieldFromDict(EV, sdicts, None, "***", tag)
         score *= tempscore
         covered += tempcovered
         # score *= scoreFieldFromDict(EV, sdicts, None, "***", tag)
-    # print(str(e1) + "  " + str(e2) + "  " + str(covered))
     return score, covered
 
 
-def entitySimilarity(EV, e1, e2): # sdicts are created on canopy
-    score = 1.0
-    for tag in e1: # let e1 be the entity and e2 be the mention
-        if tag in e2:
-            tempscore = 0
-            for xx in e1[tag]:
-                for yy in e2[tag]:
-                    temp = scoreField(EV, xx, yy, tag)
-                    if temp > tempscore:
-                        tempscore = temp
-            score *= tempscore
-    for tag in (set(e1.keys()) - set(e2.keys())):
-        score *= scoreField(EV, next(iter(e1[tag])), None, tag)
-    for tag in (set(e2.keys()) - set(e1.keys())):
-        score *= scoreField(EV, next(iter(e2[tag])), None, tag)
-    return score
+# def entitySimilarity(EV, e1, e2): # sdicts are created on canopy
+#     score = 1.0
+#     for tag in e1: # let e1 be the entity and e2 be the mention
+#         if tag in e2:
+#             tempscore = 0
+#             for xx in e1[tag]:
+#                 for yy in e2[tag]:
+#                     temp = scoreField(EV, xx, yy, tag)
+#                     if temp > tempscore:
+#                         tempscore = temp
+#             score *= tempscore
+#     for tag in (set(e1.keys()) - set(e2.keys())):
+#         score *= scoreField(EV, next(iter(e1[tag])), None, tag)
+#     for tag in (set(e2.keys()) - set(e1.keys())):
+#         score *= scoreField(EV, next(iter(e2[tag])), None, tag)
+#     return score
 
 def create_row(EV, x, d):
     print x.processtime
@@ -312,41 +335,6 @@ def recordLinkage(EV, input_rdd, outputPath, topk, d, readFromFile=True):
     result.saveAsTextFile(outputPath)
 
 if __name__ == "__main__":
-    # # sc = SparkContext(appName="DIG-EntityResolution")
-    # EV = EnvVariables()
-    # RLInit(EV)
-    #
-    # parser = OptionParser()
-    #
-    # (c_options, args) = parser.parse_args()
-    #
-    # input_path = args[0]
-    # output_path = args[1]
-    # prior_dict_file = args[2]
-    # topk = args[3]
-    # state_dict_path = args[4]
-    # all_city_path = args[5]
-    # city_faerie = args[6]
-    # state_faerie = args[7]
-    # all_faerie = args[8]
-    #
-    # # input_rdd = sc.textFile(input_path)
-    #
-    # dictc = D("", state_dict_path, all_city_path, city_faerie, state_faerie, all_faerie, prior_dict_file)
-    #
-    # query = "South San Francisco,California,".lower()
-    # candidates = [Row(uri="http://www.geonames.org/5397765", value="south san francisco,california,united states", processtime=0),
-    #               Row(uri="http://www.geonames.org/5391959", value="san francisco,california,united states", processtime=0),
-    #               Row(uri="http://www.geonames.org/5337542", value="cisco,california,united states", processtime=0)
-    #               ]
-    # # print(getAllTokens(query, 3, priorDicts))
-    # print(scoreCandidates(EV, Row(uri="", value=query,
-    #                     record=getAllTokens(query, EV.tokLen, dictc.priorDicts),
-    #                     candidates=candidates,
-    #                     processtime=0), dictc.all_city_dict))
-    # exit(0)
-
-
     sc = SparkContext(appName="DIG-EntityResolution")
     EV = EnvVariables()
     RLInit(EV)

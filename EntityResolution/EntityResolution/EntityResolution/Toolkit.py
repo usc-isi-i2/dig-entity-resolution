@@ -175,6 +175,7 @@ def getAllTokens(string, T=-1, dicts={}):
 
     for n in reversed(range(T)):
         for i in reversed(range(n, K)):
+            flag = False
             token = ""
             covers = []
             for j in range(i-n, i+1):
@@ -185,11 +186,16 @@ def getAllTokens(string, T=-1, dicts={}):
                 continue
             tags = []
             if token in dicts["city"]:
+                flag = True
                 tags.append("city")
             if token in dicts["state"]:
+                flag = True
                 tags.append("state")
             if token in dicts["country"]:
+                flag = True
                 tags.append("country")
+            if not flag and K < 10:
+                tags.append("UNK")
             jobject = {"value": token, "id": id, "covers": covers, "tags": tags}
             alltokens.append(jobject)
             id -= 1
