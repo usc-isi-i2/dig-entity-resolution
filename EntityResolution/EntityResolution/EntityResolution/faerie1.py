@@ -210,7 +210,7 @@ def processDoc2(iden,string,dicts):
         entity_real = dicts[5]
         maxenl = dicts[6]
 
-        threshold = 0.8
+        threshold = 0.5
         n = 2
 
         documentId = iden
