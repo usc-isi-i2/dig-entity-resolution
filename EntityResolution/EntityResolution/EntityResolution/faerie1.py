@@ -159,26 +159,31 @@ def readDictlist(dictlist,n):
 
     i = 0
     for line in dictlist:
-        entity_realid[i] = line
-        entity_real[i] = dictlist[line]["name"]
-        entity = entity_real[i].lower().strip()
-        inverted_index.append(entity)  # record each entity and its id
-        tokens = list(ngrams(entity, n))
-        entity_tokennum[entity] = len(tokens)  # record each entity's token number
-        if maxenl < len(tokens):
-            maxenl = len(tokens)
-        # build inverted lists for tokens
-        tokens = list(set(tokens))
-        for token in tokens:
-            token_n = "".join(token)
-            try:
-                inverted_list[token_n].append(i)
-                inverted_list_len[token_n] += 1
-            except KeyError:
-                inverted_list[token_n] = []
-                inverted_list[token_n].append(i)
-                inverted_list_len[token_n] = 1
-        i += 1
+        names = []
+        if "alternames" in dictlist[line]:
+            names = dictlist[line]["alternames"]
+        names.append(dictlist[line]["name"])
+        for name in names:
+            entity_realid[i] = line
+            entity_real[i] = name
+            entity = entity_real[i].lower().strip()
+            inverted_index.append(entity)  # record each entity and its id
+            tokens = list(ngrams(entity, n))
+            entity_tokennum[entity] = len(tokens)  # record each entity's token number
+            if maxenl < len(tokens):
+                maxenl = len(tokens)
+            # build inverted lists for tokens
+            tokens = list(set(tokens))
+            for token in tokens:
+                token_n = "".join(token)
+                try:
+                    inverted_list[token_n].append(i)
+                    inverted_list_len[token_n] += 1
+                except KeyError:
+                    inverted_list[token_n] = []
+                    inverted_list[token_n].append(i)
+                    inverted_list_len[token_n] = 1
+            i += 1
     #
     # result['inverted_list'] = inverted_list
     # result['inverted_index'] = inverted_index
@@ -205,7 +210,7 @@ def processDoc2(iden,string,dicts):
         entity_real = dicts[5]
         maxenl = dicts[6]
 
-        threshold = 0.8
+        threshold = 0.5
         n = 2
 
         documentId = iden
