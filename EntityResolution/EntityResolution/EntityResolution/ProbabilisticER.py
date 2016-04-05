@@ -191,10 +191,10 @@ def scoreCandidates(EV, entry, all_city_dict):
         # print(candidate)
         # print(score)
         # print("------------")
-        population = int(all_city_dict[candidate.uri]['populationOfArea'])+ \
-                        (1000000 if all_city_dict[candidate.uri]['snc'].lower() == 'united states' else 0)
-        matching.append(Row(value=candidate_value, score=float("{0:.4f}".format(score * (1.0 - 1.0/math.log(population + 1000))
-                                                                                * (1.0 - notcovered/100.0))),
+        population = int(all_city_dict[candidate.uri]['populationOfArea'])
+        effective_population = population + (1000000 if all_city_dict[candidate.uri]['snc'].split(',')[1].lower() == 'united states' else 0)
+        matching.append(Row(value=candidate_value, score=float("{0:.4f}".format(score * (1.0 - 1.0/math.log(effective_population + 2000))
+                                                                                * (1.0 - (notcovered if notcovered<10 else 10)/50.0))),
                             uri=str(candidate.uri), leftover=notcovered,
                             prior=population))
     matching.sort(key=lambda tup: (tup.score, tup.prior), reverse=True)
@@ -304,7 +304,9 @@ def recordLinkage(EV, input_rdd, outputPath, topk, d, readFromFile=True):
                                               'process_time': x.processtime,
                                               'matches': [{'uri': xx.uri,
                                                            'value': xx.value,
-                                                           'score': xx.score} for xx in x.matches[:num_matches]]}))
+                                                           'score': xx.score,
+                                                           'population': xx.prior,
+                                                           'leftover': xx.leftover} for xx in x.matches[:num_matches]]}))
     result.saveAsTextFile(outputPath)
 
 if __name__ == "__main__":
