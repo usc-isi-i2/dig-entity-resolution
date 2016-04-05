@@ -168,7 +168,7 @@ def generateJson(query, matches, candidates_name):
 def getAllTokens(string, T=-1, dicts={}):
     if T == -1:
         T = len(string)
-    args = re.split("[\\s,]", string)
+    args = [x.strip() for x in re.split("[\\s,]", string) if x.strip() != ""]
     id = 0
     alltokens = []
     K = len(args)

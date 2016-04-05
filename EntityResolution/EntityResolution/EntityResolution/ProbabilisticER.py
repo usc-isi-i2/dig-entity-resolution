@@ -93,10 +93,10 @@ def scoreFieldFromDict(EV, sdicts, mentionField, entityField, tag, priorDicts={}
                     temp = scoreFieldValueFromDict(EV, sdicts, mentionField, yy, tag)
                     if temp > tempscore:
                         tempscore = temp
-                        covered = len(entityField.strip().split())
+                        covered = len(mentionField.strip().split())
                 score = tempscore
             else:
-                covered = len(entityField.strip().split())
+                covered = len(mentionField.strip().split())
                 score = scoreFieldValueFromDict(EV, sdicts, mentionField, entityField, tag)
     return score, covered
 
@@ -159,18 +159,18 @@ def createEntrySimilarityDicts(EV, entry):
     return sdicts
 
 
-def parseQuery(query, priorDicts):
-    return Row(uri=query.data.label,
-               value=query.data.value,
-               record=getAllTokens(query.data.value, 3, priorDicts),
-               candidates=query.candidate)
+# def parseQuery(query, priorDicts):
+#     return Row(uri=query.data.label,
+#                value=query.data.value,
+#                record=getAllTokens(query.data.value, 3, priorDicts),
+#                candidates=query.candidate)
 
 
-def readQueriesFromFile(sparkContext, priorDicts):
-    sqlContext = SQLContext(sparkContext)
-    raw_data = sqlContext.parquetFile(EV.queriesPath)
-    data = raw_data.map(lambda x: parseQuery(x, priorDicts))
-    return data
+# def readQueriesFromFile(sparkContext, priorDicts):
+#     sqlContext = SQLContext(sparkContext)
+#     raw_data = sqlContext.parquetFile(EV.queriesPath)
+#     data = raw_data.map(lambda x: parseQuery(x, priorDicts))
+#     return data
 
 
 def scoreCandidates(EV, entry, all_city_dict):
@@ -188,11 +188,12 @@ def scoreCandidates(EV, entry, all_city_dict):
         candidate_value = candidate.value
         score, covered = scoreRecordEntity(EV, recordEntities, createEntity(candidate_value), sdicts)
         notcovered = entry.record[1] - covered
+        print(str(entry.record[1]) + "  " + str(covered))
         # print(candidate)
         # print(score)
         # print("------------")
         population = int(all_city_dict[candidate.uri]['populationOfArea'])
-        effective_population = population + (1000000 if all_city_dict[candidate.uri]['snc'].split(',')[1].lower() == 'united states' else 0)
+        effective_population = population + (int(1e7) if all_city_dict[candidate.uri]['snc'].split(',')[1].lower() == 'united states' else 0)
         matching.append(Row(value=candidate_value, score=float("{0:.4f}".format(score * (1.0 - 1.0/math.log(effective_population + 2000))
                                                                                 * (1.0 - (notcovered if notcovered<10 else 10)/50.0))),
                             uri=str(candidate.uri), leftover=notcovered,
@@ -261,6 +262,7 @@ def entitySimilarityDict(EV, e1, e2, sdicts): # sdicts are created on canopy
         score *= tempscore
         covered += tempcovered
         # score *= scoreFieldFromDict(EV, sdicts, None, "***", tag)
+    # print(str(e1) + "  " + str(e2) + "  " + str(covered))
     return score, covered
 
 
@@ -288,15 +290,15 @@ def create_row(EV, x, d):
                candidates=[Row(uri=xx.id, value=xx.value.lower()) for xx in x.entities])
 
 def recordLinkage(EV, input_rdd, outputPath, topk, d, readFromFile=True):
-    if not readFromFile:
-        num_matches = int(topk)
+    # if not readFromFile:
+    num_matches = int(topk)
 
-        queries = test.run(d, input_rdd)
+    queries = test.run(d, input_rdd)
 
-        queries = queries.filter(lambda x : x != '').map(lambda x:create_row(EV, x, d))
+    queries = queries.filter(lambda x : x != '').map(lambda x:create_row(EV, x, d))
         # sys.exit(0)
-    else:
-        queries = readQueriesFromFile(sc, d.value.priorDicts)
+    # else:
+    #     queries = readQueriesFromFile(sc, d.value.priorDicts)
 
     result = queries.map(lambda x: scoreCandidates(EV, x, d.value.all_city_dict))
     result = result.map(lambda x: json.dumps({'uri': x.uri,
@@ -310,6 +312,41 @@ def recordLinkage(EV, input_rdd, outputPath, topk, d, readFromFile=True):
     result.saveAsTextFile(outputPath)
 
 if __name__ == "__main__":
+    # # sc = SparkContext(appName="DIG-EntityResolution")
+    # EV = EnvVariables()
+    # RLInit(EV)
+    #
+    # parser = OptionParser()
+    #
+    # (c_options, args) = parser.parse_args()
+    #
+    # input_path = args[0]
+    # output_path = args[1]
+    # prior_dict_file = args[2]
+    # topk = args[3]
+    # state_dict_path = args[4]
+    # all_city_path = args[5]
+    # city_faerie = args[6]
+    # state_faerie = args[7]
+    # all_faerie = args[8]
+    #
+    # # input_rdd = sc.textFile(input_path)
+    #
+    # dictc = D("", state_dict_path, all_city_path, city_faerie, state_faerie, all_faerie, prior_dict_file)
+    #
+    # query = "South San Francisco,California,".lower()
+    # candidates = [Row(uri="http://www.geonames.org/5397765", value="south san francisco,california,united states", processtime=0),
+    #               Row(uri="http://www.geonames.org/5391959", value="san francisco,california,united states", processtime=0),
+    #               Row(uri="http://www.geonames.org/5337542", value="cisco,california,united states", processtime=0)
+    #               ]
+    # # print(getAllTokens(query, 3, priorDicts))
+    # print(scoreCandidates(EV, Row(uri="", value=query,
+    #                     record=getAllTokens(query, EV.tokLen, dictc.priorDicts),
+    #                     candidates=candidates,
+    #                     processtime=0), dictc.all_city_dict))
+    # exit(0)
+
+
     sc = SparkContext(appName="DIG-EntityResolution")
     EV = EnvVariables()
     RLInit(EV)
@@ -331,6 +368,7 @@ if __name__ == "__main__":
     input_rdd = sc.textFile(input_path)
 
     dictc = D(sc, state_dict_path, all_city_path, city_faerie, state_faerie, all_faerie, prior_dict_file)
+
     d = sc.broadcast(dictc)
 
     recordLinkage(EV, input_rdd, output_path, topk, d, False)
