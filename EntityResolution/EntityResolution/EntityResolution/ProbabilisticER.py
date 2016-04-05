@@ -1,16 +1,15 @@
 # __author__ = 'majid'
-
 import copy
 from optparse import OptionParser
 import test
 from pyspark.sql import Row
-from pyspark import SparkContext, SQLContext
+from pyspark import SparkContext
 from dictionaries import D
 from Toolkit import getAllTokens
-from Toolkit import stringDistLev
+from Toolkit import stringDistSmith
 import json
 import math
-import codecs
+import time
 
 
 class EnvVariables:
@@ -42,17 +41,18 @@ def readAttrConfig(EV, cpath):
             attrNotInDict = jobject['probability_not_in_dict']
             attrAltName = jobject['probability_alt_name']
             attrSpellingError = jobject['probability_spelling_error']
+            attrMismatch = jobject['probability_mismatch']
             EV.attributes.update({attrName: {'type': attrType,
                                                'probNotInDict': attrNotInDict,
                                                'probAltName': attrAltName,
                                                'probSpellingError': attrSpellingError,
                                                'probMissingInRec': 0.4,
-                                               'probMissingInEntity': 0.4}})
+                                               'probMissingInEntity': 0.4,
+                                               'probMismatch': attrMismatch}})
             EV.allTags.append(attrName)
 
 
 def RLInit(EV):
-    # global EV
     readAttrConfig(EV, "attr_config.json")
     readEnvConfig(EV, "env_config.json")
 
@@ -111,16 +111,16 @@ def scoreFieldValueFromDict(EV, sdicts, mentionVal, entityVal, tag):
 
 
 def scoreField(EV, mentionField, entityField, tag):
-    score = 0.0
     # todo: add prior probabilities to deal with none fields
     if EV.attributes[tag]['type'] == "string":
-        if entityField is None:
-            score = 0.1
-        elif mentionField is None:
-            score = 0.8
-        else:
-            score = stringDistLev(mentionField, entityField)
-    return score
+        tempscore, sindx, eindx, gap, mismatch = stringDistSmith(entityField, mentionField)
+        if gap == 0 and mismatch == 0:  # exact match
+            return 1.0
+        elif (len(mentionField)>8 and gap<2 and mismatch<3) or\
+             (len(mentionField)>5 and gap<2 and mismatch<2):  # spelling mistake
+            return EV.attributes[tag]['probSpellingError']
+        else:  # mismatch probability
+            return EV.attributes[tag]['probMismatch']
 
 def scoreRecordEntity(EV, recordEntities, entity, similarityDicts):  # record and entity are the same json format
     maxscore = 0
@@ -166,24 +166,11 @@ def createEntrySimilarityDicts(EV, entry):
     return sdicts
 
 
-# def parseQuery(query, priorDicts):
-#     return Row(uri=query.data.label,
-#                value=query.data.value,
-#                record=getAllTokens(query.data.value, 3, priorDicts),
-#                candidates=query.candidate)
-
-
-# def readQueriesFromFile(sparkContext, priorDicts):
-#     sqlContext = SQLContext(sparkContext)
-#     raw_data = sqlContext.parquetFile(EV.queriesPath)
-#     data = raw_data.map(lambda x: parseQuery(x, priorDicts))
-#     return data
-
-
 def scoreCandidates(EV, entry, all_city_dict):
+    start_time = time.clock()
+
     sdicts = createEntrySimilarityDicts(EV, entry)
     matching = []
-    # print("before effect!")
     recordEntities = reformatRecord2Entity([x for x in entry.record[0] if len(x['tags'])!=0])
     # print(sdicts)
     # print("==============")
@@ -206,7 +193,10 @@ def scoreCandidates(EV, entry, all_city_dict):
                             uri=str(candidate.uri), leftover=notcovered,
                             prior=population))
     matching.sort(key=lambda tup: (tup.score, tup.prior), reverse=True)
-    return Row(uri=entry.uri, value=entry.value, matches=matching, processtime=entry.processtime)
+
+    process_time = str((time.clock() - start_time)*1000)
+    return Row(uri=entry.uri, value=entry.value, matches=matching, processtime=(entry.processtime+"_"+process_time),
+               numcandidates=len(matching))
 
 
 def reformatRecord2EntityHelper(record, covered=set()):
@@ -276,57 +266,33 @@ def entitySimilarityDict(EV, e1, e2, sdicts): # sdicts are created on canopy, e1
             coveredTags.add(maxTag)
             score *= maxScore * 0.9 # todo: refine tag difference penalty
             covered += maxCovered
-    # for tag in (set(e1.keys()) - set(e2.keys())):
-    #     tempscore, tempcovered = scoreFieldFromDict(EV, sdicts, "***", None, tag)
-    #     score *= tempscore
-    #     covered += tempcovered
-    #     # score *= scoreFieldFromDict(EV, sdicts, "***", None, tag)
     for tag in (set(e2.keys()) - coveredTags):
         tempscore, tempcovered = scoreFieldFromDict(EV, sdicts, None, "***", tag)
         score *= tempscore
         covered += tempcovered
         # score *= scoreFieldFromDict(EV, sdicts, None, "***", tag)
+    # print str(e1) + " " + str(e2) + " " + str(score) + " " + str(covered)
     return score, covered
 
 
-# def entitySimilarity(EV, e1, e2): # sdicts are created on canopy
-#     score = 1.0
-#     for tag in e1: # let e1 be the entity and e2 be the mention
-#         if tag in e2:
-#             tempscore = 0
-#             for xx in e1[tag]:
-#                 for yy in e2[tag]:
-#                     temp = scoreField(EV, xx, yy, tag)
-#                     if temp > tempscore:
-#                         tempscore = temp
-#             score *= tempscore
-#     for tag in (set(e1.keys()) - set(e2.keys())):
-#         score *= scoreField(EV, next(iter(e1[tag])), None, tag)
-#     for tag in (set(e2.keys()) - set(e1.keys())):
-#         score *= scoreField(EV, next(iter(e2[tag])), None, tag)
-#     return score
-
 def create_row(EV, x, d):
-    print x.processtime
+    # print x.processtime
     return Row(processtime=x.processtime, uri=x.document.id,
                value=x.document.value, record=getAllTokens(x.document.value, EV.tokLen, d.value.priorDicts),
                candidates=[Row(uri=xx.id, value=xx.value.lower()) for xx in x.entities])
 
 def recordLinkage(EV, input_rdd, outputPath, topk, d, readFromFile=True):
-    # if not readFromFile:
     num_matches = int(topk)
 
     queries = test.run(d, input_rdd)
 
     queries = queries.filter(lambda x : x != '').map(lambda x:create_row(EV, x, d))
-        # sys.exit(0)
-    # else:
-    #     queries = readQueriesFromFile(sc, d.value.priorDicts)
 
     result = queries.map(lambda x: scoreCandidates(EV, x, d.value.all_city_dict))
     result = result.map(lambda x: json.dumps({'uri': x.uri,
                                               'value': x.value,
                                               'process_time': x.processtime,
+                                              'numcandidates': x.numcandidates,
                                               'matches': [{'uri': xx.uri,
                                                            'value': xx.value,
                                                            'score': xx.score,
