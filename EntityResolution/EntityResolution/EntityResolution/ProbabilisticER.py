@@ -6,7 +6,7 @@ from pyspark.sql import Row
 from pyspark import SparkContext
 from dictionaries import D
 from Toolkit import getAllTokens
-from Toolkit import stringDistSmith
+from Toolkit import stringDistLev
 import json
 import math
 import time
@@ -42,12 +42,14 @@ def readAttrConfig(EV, cpath):
             attrAltName = jobject['probability_alt_name']
             attrSpellingError = jobject['probability_spelling_error']
             attrMismatch = jobject['probability_mismatch']
+            attrMissInEnt = jobject['probability_missing_in_entity']
+            attrMissInMent = jobject['probability_missing_in_mention']
             EV.attributes.update({attrName: {'type': attrType,
                                                'probNotInDict': attrNotInDict,
                                                'probAltName': attrAltName,
                                                'probSpellingError': attrSpellingError,
-                                               'probMissingInRec': 0.4,
-                                               'probMissingInEntity': 0.4,
+                                               'probMissingInRec': attrMissInMent,
+                                               'probMissingInEntity': attrMissInEnt,
                                                'probMismatch': attrMismatch}})
             EV.allTags.append(attrName)
 
@@ -111,16 +113,20 @@ def scoreFieldValueFromDict(EV, sdicts, mentionVal, entityVal, tag):
 
 
 def scoreField(EV, mentionField, entityField, tag):
+    score = 0.0
     # todo: add prior probabilities to deal with none fields
     if EV.attributes[tag]['type'] == "string":
-        tempscore, sindx, eindx, gap, mismatch = stringDistSmith(entityField, mentionField)
-        if gap == 0 and mismatch == 0:  # exact match
-            return 1.0
-        elif (len(mentionField)>8 and gap<2 and mismatch<3) or\
-             (len(mentionField)>5 and gap<2 and mismatch<2):  # spelling mistake
-            return EV.attributes[tag]['probSpellingError']
+        tempscore, gap = stringDistLev(entityField, mentionField)
+        if gap == 0:  # exact match
+            score = 1.0
+        elif (len(entityField)>8 and gap < 3) or\
+             (len(entityField)>5 and gap == 1):  # spelling mistake
+            score = EV.attributes[tag]['probSpellingError']
         else:  # mismatch probability
-            return EV.attributes[tag]['probMismatch']
+            score = tempscore
+            # return EV.attributes[tag]['probMismatch']
+        # print mentionField + " " + entityField + " " + str(score) + " " + str(gap)
+    return score
 
 def scoreRecordEntity(EV, recordEntities, entity, similarityDicts):  # record and entity are the same json format
     maxscore = 0

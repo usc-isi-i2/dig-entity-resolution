@@ -75,11 +75,10 @@ def stringDistLev(seq1, seq2):
             subcost = oneago[y - 1] + (seq1[x] != seq2[y])
             thisrow[y] = min(delcost, addcost, subcost)
     max_len = max({len(seq1), len(seq2)})
-    min_len = min({len(seq1), len(seq2)})
-    return float(max_len - thisrow[len(seq2) - 1]) / float(max_len)
+    return float(max_len - thisrow[len(seq2) - 1]) / float(max_len), thisrow[len(seq2) - 1]
 
 def stringDistSmith(strG, strR): # uses smith-waterman method
-        if strG is None or strR is None or len(strG) < 1 or len(strR) < 1:
+        if strG is None or strR is None or len(strG) == 0 or len(strR) == 0:
             return [0.0, -1, -1, 1000, 10000]
         row = len(strR)
         col = len(strG)
@@ -140,9 +139,9 @@ def stringDistSmith(strG, strR): # uses smith-waterman method
                 count_gap = 1000
                 break
         start_index = i
-        return [float(max_sim) / float(len(strG) - 1) / 2.0,
-                start_index, max_index,
-                count_gap, count_mismatch]
+        return float(max_sim) / float(len(strG) - 1) / 2.0,\
+                start_index, max_index,\
+                count_gap, count_mismatch
 
 def generateJson(query, matches, candidates_name):
         jsonObj = {"uri": str(query[0]), "name": str(query[1]), candidates_name: []}
