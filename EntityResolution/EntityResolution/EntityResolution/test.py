@@ -66,16 +66,16 @@ def searchcity(states_can, uri, city, d):
             country_uri = d.value.state_dict[state_uri]["country_uri"]
             if country_uri != '':
                 if 'entities' in cities_can:
-                    cities_can_add = faerie1.processDoc2(uri, city, d.value.all_faerie_dict[country_uri][state_uri]["cities"])
+                    cities_can_add = faerie1.processDoc2(uri, city, d.value.all_faerie_dict[country_uri][state_uri]["cities"],0.5)
                     if cities_can_add != {}:
                         cities_can["entities"] = dict(cities_can["entities"],
                                               **cities_can_add["entities"])
                 else:
-                    cities_can = faerie1.processDoc2(uri, city, d.value.all_faerie_dict[country_uri][state_uri]["cities"])
+                    cities_can = faerie1.processDoc2(uri, city, d.value.all_faerie_dict[country_uri][state_uri]["cities"],0.5)
             else:
                 print "Line 73:" + state_uri
     else:
-        cities_can = faerie1.processDoc2(uri,city,d.value.city_faerie_dict)
+        cities_can = faerie1.processDoc2(uri,city,d.value.city_faerie_dict,0.5)
 
     return cities_can
 
