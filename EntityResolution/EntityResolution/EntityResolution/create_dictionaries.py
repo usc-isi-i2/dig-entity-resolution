@@ -2,6 +2,7 @@ import json
 from optparse import OptionParser
 import codecs
 import faerie1
+import tagging
 import Toolkit
 
 def create_prior_dict(path):
@@ -76,6 +77,30 @@ def createDict2(all_dict, state_dict, city_dict):
     return wholecities_dicts,wholestates_dicts, dicts
 
 
+def create_tagging_dict(json_file):
+  states = set()
+  countries = set()
+  cities = set()
+
+  for key in json_file["city"]:
+    city = key.lower()
+    cities.add(city)
+    if len(city) >= 5:
+      cities |= tagging.edits1(city)
+  for key in json_file["state"]:
+    state = key.lower()
+    states.add(state)
+    if len(state) >= 5 and len(state) <10:
+      states |= tagging.edits1(state)
+  for key in json_file["country"]:
+    country = key.lower()
+    countries.add(country)
+    if len(country) >= 5 and len(country) <10:
+      countries |= tagging.edits1(country)
+  return {'city': {x:0 for x in cities},
+          'state': {x:0 for x in states},
+          'country': {x:0 for x in countries}}
+
 
 if __name__ == "__main__":
     parser = OptionParser()
@@ -113,4 +138,8 @@ if __name__ == "__main__":
     all_city_dict.write(json.dumps(f4))
 
     prior_dict = codecs.open(output_path + "/prior_dict.json", 'w')
-    prior_dict.write(create_prior_dict(input_path))
+    prior = create_prior_dict(input_path)
+    prior_dict.write(prior)
+
+    tagging_dict = codecs.open(output_path + "/tagging_dict.json", 'w')
+    tagging_dict.write(json.dumps(create_tagging_dict(json.loads(prior))))
