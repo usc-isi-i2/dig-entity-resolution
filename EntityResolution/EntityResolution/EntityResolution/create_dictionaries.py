@@ -90,12 +90,12 @@ def create_tagging_dict(json_file):
   for key in json_file["state"]:
     state = key.lower()
     states.add(state)
-    if len(state) >= 5 and len(state) <10:
+    if len(state) >= 5:
       states |= tagging.edits1(state)
   for key in json_file["country"]:
     country = key.lower()
     countries.add(country)
-    if len(country) >= 5 and len(country) <10:
+    if len(country) >= 5:
       countries |= tagging.edits1(country)
   return {'city': {x:0 for x in cities},
           'state': {x:0 for x in states},

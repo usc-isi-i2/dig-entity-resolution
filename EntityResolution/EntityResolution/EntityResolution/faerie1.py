@@ -1,7 +1,7 @@
 from nltk.util import ngrams
 import singleheap
 import json
-from pyspark.sql import Row
+# from pyspark.sql import Row
 
 
 def readDict(dictfile,config):
@@ -197,7 +197,7 @@ def readDictlist(dictlist,n):
     return [inverted_list, inverted_index, entity_tokennum, inverted_list_len, entity_realid, entity_real, maxenl]
     # return [json.dumps(inverted_list),json.dumps(inverted_index),json.dumps(entity_tokennum),json.dumps(inverted_list_len),json.dumps(entity_realid),json.dumps(entity_real),maxenl]
 
-def processDoc2(iden,string,dicts):
+def processDoc2(iden,string,dicts,threshold = 0.8):
 
     jsonline = {}
     if string.strip() != '':
@@ -210,7 +210,6 @@ def processDoc2(iden,string,dicts):
         entity_real = dicts[5]
         maxenl = dicts[6]
 
-        threshold = 0.5
         n = 2
 
         documentId = iden
