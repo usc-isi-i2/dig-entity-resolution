@@ -64,7 +64,7 @@ def convertToCSV(cities):
 
 def stringDistLev(seq1, seq2):
     if seq1 == "" or seq2 == "":
-        return 0.0
+        return 0.0, 100
     oneago = None
     thisrow = list(range(1, len(seq2) + 1)) + [0]
     for x in range(len(seq1)):
