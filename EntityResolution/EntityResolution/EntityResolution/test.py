@@ -24,7 +24,9 @@ def processDoc(line, d):
             if snc != '':
                 temp = Row(id=eid,value=entity["value"] + ","+snc,candwins=entity["candwins"])
                 jsent.append(temp)
-
+            else:
+                temp = Row(id=eid,value=entity["value"] ,candwins=entity["candwins"])
+                jsent.append(temp)
         jsdoc = Row(id=cities_can["document"]["id"],value=cities_can["document"]["value"] + ","+state+","+country)
         jsonline = Row(document=jsdoc,entities=jsent, processtime=process_time)
         return jsonline
@@ -39,12 +41,12 @@ def search(country_can, uri, state, city, d):
     if country_can and country_can != {} and country_can["entities"] != {}:
         for country_uri in country_can["entities"]:
             if state != "":
+                temp = faerie1.processDoc2(uri, state, d.value.all_faerie_dict[country_uri]["states_dict"])
                 if 'entities' in states_can:
                     states_can["entities"] = dict(states_can["entities"],
-                                          **faerie1.processDoc2(uri, state, d.value.all_faerie_dict[country_uri]["states_dict"])[
-                                                  "entities"])
+                                          **temp["entities"])
                 else:
-                    states_can = faerie1.processDoc2(uri, state, d.value.all_faerie_dict[country_uri]["states_dict"])
+                    states_can = temp
             if states_can == None or states_can == {} or states_can["entities"] == {}:
                 # if input state is empty, get the state uris from all_dicts in that country
                 states_can["entities"] = d.value.all_faerie_dict[country_uri]["states_dict"][4].values()
@@ -55,8 +57,10 @@ def search(country_can, uri, state, city, d):
             states_can = faerie1.processDoc2(uri, state, d.value.state_faerie_dict)
 
         cities_can = searchcity(states_can, uri, city, d)
-
-    return cities_can
+    if cities_can:
+        return cities_can
+    else:
+        return states_can
 
 
 def searchcity(states_can, uri, city, d):
