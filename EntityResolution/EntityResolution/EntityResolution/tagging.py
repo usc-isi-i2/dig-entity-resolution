@@ -1,6 +1,5 @@
-import json,time
-import codecs
-
+import json
+import time
 def edits1(word):
    splits = [(word[:i], word[i:]) for i in range(len(word) + 1)]
    deletes = [a + b[1:] for a, b in splits if b]
@@ -12,17 +11,23 @@ def edits2(word):
 
 def known(words,NWORDS): return set(w for w in words if w in NWORDS)
 
-def correct(word,dicts):
+def tag(word,dicts,key):
   word = word.lower()
-  # print dicts
-  if known([word],dicts["city"]):
-    return "city"
-  if len(word) >= 5:
-    if known(edits1(word),dicts["city"]):
-      return "city"
-  
-  return "False"
+  if known([word],dicts[key]):
+    return key
+  elif len(word) >= 5:
+    if known(edits1(word),dicts[key]):
+      return key
+  else:
+    return None
 
 
-
-# print correct("losangeles",jf)
+# jf = json.load(open("dicts/tagging_dict.json"))
+# print "dict loaded"
+# start_time = time.clock()
+# print tag("los angele",jf,"city")
+# print tag("losangele2",jf,"city")
+# print tag("california",jf,"state")
+# print tag("calnifornib",jf,"state")
+# process_time = str((time.clock() - start_time)*1000)
+# print process_time
