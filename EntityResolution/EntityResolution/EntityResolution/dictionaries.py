@@ -3,7 +3,7 @@ import codecs
 
 
 class D(object):
-    def __init__(self, sc, state_dict_path, all_city_path, city_faerie, state_faerie, all_faerie, prior_dict_file):
+    def __init__(self, sc, state_dict_path, all_city_path, city_faerie, state_faerie, all_faerie, prior_dict_file,tagging_dict_file):
 
         # self.state_dict = json.loads(sc.wholeTextFiles(state_dict_path).first()[1])
         self.state_dict = json.load(codecs.open(state_dict_path, 'r', 'utf-8'))
@@ -22,3 +22,5 @@ class D(object):
 
         # self.priorDicts = json.loads(sc.wholeTextFiles(prior_dict_file).first()[1])
         self.priorDicts = json.load(codecs.open(prior_dict_file, 'r', 'utf-8'))
+
+        self.taggingDicts = json.load(codecs.open(tagging_dict_file, 'r', 'utf-8'))

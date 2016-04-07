@@ -284,7 +284,7 @@ def entitySimilarityDict(EV, e1, e2, sdicts): # sdicts are created on canopy, e1
 def create_row(EV, x, d):
     # print x.processtime
     return Row(processtime=x.processtime, uri=x.document.id,
-               value=x.document.value, record=getAllTokens(x.document.value, EV.tokLen, d.value.priorDicts),
+               value=x.document.value, record=getAllTokens(x.document.value, EV.tokLen, d.value.taggingDicts),
                candidates=[Row(uri=xx.id, value=xx.value.lower()) for xx in x.entities])
 
 def recordLinkage(EV, input_rdd, outputPath, topk, d, readFromFile=True):
@@ -324,10 +324,11 @@ if __name__ == "__main__":
     city_faerie = args[6]
     state_faerie = args[7]
     all_faerie = args[8]
+    tagging_dict_file = args[9]
 
     input_rdd = sc.textFile(input_path)
 
-    dictc = D(sc, state_dict_path, all_city_path, city_faerie, state_faerie, all_faerie, prior_dict_file)
+    dictc = D(sc, state_dict_path, all_city_path, city_faerie, state_faerie, all_faerie, prior_dict_file,tagging_dict_file)
 
     d = sc.broadcast(dictc)
 

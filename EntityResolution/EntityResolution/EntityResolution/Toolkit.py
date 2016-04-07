@@ -1,6 +1,6 @@
 import re
 import json
-
+import tagging
 # Given a path in json, return value if path, full path denoted by . (example address.name) exists, otherwise return ''
 def get_value_json(path, doc, separator='.'):
     paths = path.strip().split(separator)
@@ -174,7 +174,6 @@ def getAllTokens(string, T=-1, dicts={}):
 
     for n in reversed(range(T)):
         for i in reversed(range(n, K)):
-            flag = False
             token = ""
             covers = []
             for j in range(i-n, i+1):
@@ -184,17 +183,13 @@ def getAllTokens(string, T=-1, dicts={}):
             if token == "":
                 continue
             tags = []
-            if token in dicts["city"]:
-                flag = True
+            if tagging.tag(token,dicts["city"]):
                 tags.append("city")
-            if token in dicts["state"]:
-                flag = True
+            if tagging.tag(token,dicts["state"]):
                 tags.append("state")
-            if token in dicts["country"]:
-                flag = True
+            if tagging.tag(token,dicts["country"]):
                 tags.append("country")
-            if not flag and K < 10:
-                tags.append("UNK")
+
             jobject = {"value": token, "id": id, "covers": covers, "tags": tags}
             alltokens.append(jobject)
             id -= 1

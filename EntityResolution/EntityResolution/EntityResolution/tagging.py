@@ -11,15 +11,15 @@ def edits2(word):
 
 def known(words,NWORDS): return set(w for w in words if w in NWORDS)
 
-def tag(word,dicts,key):
+def tag(word,dicts):
   word = word.lower()
-  if known([word],dicts[key]):
-    return key
+  if known([word],dicts):
+    return True
   elif len(word) >= 5:
-    if known(edits1(word),dicts[key]):
-      return key
+    if known(edits1(word),dicts):
+      return True
   else:
-    return None
+    return False
 
 
 # jf = json.load(open("dicts/tagging_dict.json"))
