@@ -26,6 +26,10 @@ def processDoc(line, d):
                 if snc != '':
                     temp = Row(id=eid,value=entity["value"] + ","+snc,candwins=entity["candwins"])
                     jsent.append(temp)
+                else:
+                    temp = Row(id=eid,value=entity["value"] ,candwins=entity["candwins"])
+                    jsent.append(temp)
+
 
             jsdoc = Row(id=cities_can["document"]["id"],value=cities_can["document"]["value"] + ","+state+","+country)
             jsonline = Row(document=jsdoc,entities=jsent, processtime=process_time)
@@ -38,6 +42,7 @@ def processDoc(line, d):
 def search(country_can, uri, state, city, d):
     states_can = {}
     cities_can = {}
+
     try:
         if country_can and country_can != {} and country_can["entities"] != {}:
             for country_uri in country_can["entities"]:
@@ -57,6 +62,7 @@ def search(country_can, uri, state, city, d):
             if state != "":
                 states_can = faerie1.processDoc2(uri, state, d.value.state_faerie_dict)
 
+
             cities_can = searchcity(states_can, uri, city, d)
     except:
         print country_can
@@ -64,7 +70,11 @@ def search(country_can, uri, state, city, d):
         print state
         print city
 
-    return cities_can
+    if cities_can:
+        return cities_can
+    else:
+        return states_can
+
 
 
 def searchcity(states_can, uri, city, d):
