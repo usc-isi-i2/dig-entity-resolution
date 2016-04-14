@@ -160,9 +160,10 @@ def readDictlist(dictlist,n):
     i = 0
     for line in dictlist:
         names = []
-        if "alternames" in dictlist[line]:
-            names = dictlist[line]["alternames"]
-        names.append(dictlist[line]["name"])
+        if type(dictlist[line]["name"]) == str:
+            names.append(dictlist[line]["name"])
+        else:
+            names = dictlist[line]["name"]
         for name in names:
             entity_realid[i] = line
             entity_real[i] = name
