@@ -1,8 +1,10 @@
 # __author__ = 'majid'
 import copy
+from optparse import OptionParser
 from Toolkit import getAllTokens
 from Toolkit import getAllTokensFormatted
 from Toolkit import stringDistLev
+import math
 import json
 import time
 
@@ -319,31 +321,26 @@ def recordLinkage(EV, queries, topk, priorDict, taggingDict, inputmode='jlines',
     return [scoreCandidates(EV, xx, priorDict, taggingDict, topk, entitymode) for xx in queryObjects]
 
 
+def createGeonamesPriorDict(all_city_dict):
+    pdict = {}
+    for uri, val in all_city_dict.items():
+        population = int(val['populationOfArea'])
+        effective_population = population + (int(1e7) if val['snc'].split(',')[1].lower() == 'united states' else 0)
+        prior = (1.0 - 1.0/math.log(effective_population + 2000))
+        pdict.update({uri: prior})
+    return pdict
+
+
 if __name__ == "__main__":
     EV = EnvVariables()
     RLInit(EV)
 
-    pdictpath = ""
+    all_city_dict = json.load(open("/Users/majid/dig-entity-resolution/all_city_dict.json"))
+    pdict = createGeonamesPriorDict(all_city_dict)
+    # pdictpath = args[0]
+    # tdictpath = ""
 
     taggingDict = json.load(open("/Users/majid/dig-entity-resolution/tagging_dict.json"))
-    # parser = OptionParser()
-    #
-    # (c_options, args) = parser.parse_args()
-    #
-    # input_path = args[0]
-    # output_path = args[1]
-    # prior_dict_file = args[2]
-    # topk = args[3]
-    # state_dict_path = args[4]
-    # all_city_path = args[5]
-    # city_faerie = args[6]
-    # state_faerie = args[7]
-    # all_faerie = args[8]
-    # tagging_dict_file = args[9]
-    #
-    # input_rdd = sc.textFile(input_path)
-    #
-    # dictc = D(sc, state_dict_path, all_city_path, city_faerie, state_faerie, all_faerie, prior_dict_file,tagging_dict_file)
 
     query = "San Francisco Oakland Emeryville Hayward California Outcalls".lower()
     candidates = [{'uri':"http://www.geonames.org/5397765", 'value':{'city': 'san francisco', 'state': 'california', 'country':'united states'}},
