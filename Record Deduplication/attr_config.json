@@ -1,3 +1,0 @@
-{"attr":"state","type":"string","probability_not_in_dict":0.001,"probability_alt_name":0.3,"probability_spelling_error":0.1}
-{"attr":"city","type":"string","probability_not_in_dict":0.01,"probability_alt_name":0.3,"probability_spelling_error":0.2}
-{"attr":"country","type":"string","probability_not_in_dict":0.0001,"probability_alt_name":0.3,"probability_spelling_error":0.1}
