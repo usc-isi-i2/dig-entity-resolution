@@ -1,4 +1,0 @@
-{"attr":"UNK","type":"string","probability_not_in_dict":1,"probability_alt_name":1,"probability_spelling_error":1.0, "probability_mismatch":0.01, "probability_missing_in_entity":0.0, "probability_missing_in_mention":0.0}
-{"attr":"state","type":"string","probability_not_in_dict":0.001,"probability_alt_name":0.3,"probability_spelling_error":0.95, "probability_mismatch":0.1, "probability_missing_in_entity":0.0, "probability_missing_in_mention":0.6}
-{"attr":"city","type":"string","probability_not_in_dict":0.01,"probability_alt_name":0.3,"probability_spelling_error":0.95, "probability_mismatch":0.1, "probability_missing_in_entity":0.0, "probability_missing_in_mention":0.3}
-{"attr":"country","type":"string","probability_not_in_dict":0.0001,"probability_alt_name":0.3,"probability_spelling_error":0.95, "probability_mismatch":0.1, "probability_missing_in_entity":0.0, "probability_missing_in_mention":0.8}
