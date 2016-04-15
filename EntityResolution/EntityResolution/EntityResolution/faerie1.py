@@ -160,13 +160,19 @@ def readDictlist(dictlist,n):
     i = 0
     for line in dictlist:
         names = []
-        if type(dictlist[line]["name"]) == str:
-            names.append(dictlist[line]["name"])
-        else:
-            names = dictlist[line]["name"]
+        city_names = dictlist[line]['name']
+        if isinstance(city_names, list):
+            names = city_names
+        elif isinstance(city_names, str):
+            names.append(city_names)
+        # if type(dictlist[line]["name"]) == str:
+        #     names.append(dictlist[line]["name"])
+        # else:
+        #     names = dictlist[line]["name"]
         for name in names:
             entity_realid[i] = line
             entity_real[i] = name
+            print 'rntuty',entity_real[i]
             entity = entity_real[i].lower().strip().replace(" ","")
             inverted_index.append(entity)  # record each entity and its id
             tokens = list(ngrams(entity, n))

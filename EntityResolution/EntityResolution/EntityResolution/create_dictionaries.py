@@ -20,8 +20,7 @@ def createDict1(path):
         if 'name' in line:
             city = line["name"]
             population = line['populationOfArea']
-            print city + " " + line['alternateName']
-            print
+            # print city, line['alternateName']
             city_uri = line["uri"]
             try:
                 state = line["address"]["addressRegion"]["name"]
@@ -112,30 +111,29 @@ if __name__ == "__main__":
 
     input_path = args[0]
     output_path = args[1]
-    f1, f2, f3, f4 = createDict1(input_path)
-    # city_dict = codecs.open(output_path + "/city_dict.json", 'w')
-    # city_dict.write(json.dumps(f1))
+    city_dict_j, state_dict_j, all_dict_j, all_city_dict_j = createDict1(input_path)
+    city_dict = codecs.open(output_path + "/city_dict.json", 'w')
+    city_dict.write(json.dumps(city_dict_j))
 
     state_dict = codecs.open(output_path + "/state_dict.json", 'w')
-    state_dict.write(json.dumps(f2))
+    state_dict.write(json.dumps(state_dict_j))
 
-    # all_dict = codecs.open(output_path + "/all_dict.json", 'w')
-    # all_dict.write(json.dumps(f3))
+    all_dict = codecs.open(output_path + "/all_dict.json", 'w')
+    all_dict.write(json.dumps(all_dict_j))
 
-
-    wcd, wsd, d = createDict2(f3, f2, f1)
+    city_faerie_j, state_faerie_j, all_faerie_j = createDict2(all_dict_j, state_dict_j, city_dict_j)
 
     wcd_faerie = codecs.open(output_path +'/city_faerie.json', 'w')
-    wcd_faerie.write(json.dumps(wcd))
+    wcd_faerie.write(json.dumps(city_faerie_j))
 
     wsd_faerie = codecs.open(output_path + "/state_faerie.json", 'w')
-    wsd_faerie.write(json.dumps(wsd))
+    wsd_faerie.write(json.dumps(state_faerie_j))
 
     d_faerie = codecs.open(output_path + "/all_dict_faerie.json", 'w')
-    d_faerie.write(json.dumps(d))
+    d_faerie.write(json.dumps(all_faerie_j))
 
     all_city_dict = codecs.open(output_path + "/all_city_dict.json", 'w')
-    all_city_dict.write(json.dumps(f4))
+    all_city_dict.write(json.dumps(all_city_dict_j))
 
     prior_dict = codecs.open(output_path + "/prior_dict.json", 'w')
     prior = create_prior_dict(input_path)
