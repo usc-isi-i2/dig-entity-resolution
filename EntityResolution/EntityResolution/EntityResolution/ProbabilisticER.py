@@ -24,9 +24,7 @@ class EnvVariables:
     tokLen = -1
 
 
-def readConfig(EV, cpath):  # read config file from the config path, and init EV (environment variable)
-    configs = json.load(open(cpath))
-
+def readConfig(EV, configs):  # read config file from the config path, and init EV (environment variable)
     for jobject in configs['attributes']:
         attrName = jobject['attr']
         attrType = jobject['type']
@@ -51,8 +49,8 @@ def readConfig(EV, cpath):  # read config file from the config path, and init EV
     EV.mergeThreshold = configs['environment']['mergeThreshold']
 
 
-def RLInit(EV, configPath):
-    readConfig(EV, configPath)
+def RLInit(EV, configs):
+    readConfig(EV, configs)
 
 
 ###
@@ -311,9 +309,9 @@ def entitySimilarityDict(EV, e1, e2, sdicts): # sdicts are created on canopy, e1
 #     'jobj': one json object (queries will be the json line),
 #     'jobjs': an array of json objects (queries will be the json objs array)
 ###
-def recordLinkage(configPath, queries, topk, priorDict, taggingDict, inputmode='jlines', entitymode = 'raw'):
+def recordLinkage(configs, queries, topk, priorDict, taggingDict, inputmode='jobj', entitymode = 'raw'):
     EV = EnvVariables()
-    RLInit(EV, configPath)
+    RLInit(EV, configs)
     if inputmode == 'file':
         queryObjects = [json.loads(x) for x in open(queries).readlines() if x != ""]
     elif inputmode == 'jline':
@@ -351,6 +349,6 @@ if __name__ == "__main__":
                     {'uri':"http://www.geonames.org/5337542", 'value':{'city': 'oakland', 'state': 'california', 'country':'united states'}}
     ]
 
-    print(recordLinkage("config.json", {'uri':"", 'value':query,
+    print(recordLinkage(json.load(open("config.json")), {'uri':"", 'value':query,
                         'candidates':candidates,
                         'processtime':'0'}, 4, {}, taggingDict, 'jobj', 'raw'))
