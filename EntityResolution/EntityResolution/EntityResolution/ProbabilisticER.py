@@ -49,8 +49,10 @@ def readConfig(EV, configs):  # read config file from the config path, and init 
     EV.mergeThreshold = configs['environment']['mergeThreshold']
 
 
-def RLInit(EV, configs):
+def initializeRecordLinkage(configs):
+    EV = EnvVariables()
     readConfig(EV, configs)
+    return EV
 
 
 ###
@@ -309,9 +311,7 @@ def entitySimilarityDict(EV, e1, e2, sdicts): # sdicts are created on canopy, e1
 #     'jobj': one json object (queries will be the json line),
 #     'jobjs': an array of json objects (queries will be the json objs array)
 ###
-def recordLinkage(configs, queries, topk, priorDict, taggingDict, inputmode='jobj', entitymode = 'raw'):
-    EV = EnvVariables()
-    RLInit(EV, configs)
+def recordLinkage(EV, queries, topk, priorDict, taggingDict, inputmode='jobj', entitymode = 'raw'):
     if inputmode == 'file':
         queryObjects = [json.loads(x) for x in open(queries).readlines() if x != ""]
     elif inputmode == 'jline':
@@ -349,6 +349,6 @@ if __name__ == "__main__":
                     {'id':"http://www.geonames.org/5337542", 'value':{'city': 'oakland', 'state': 'california', 'country':'united states'}}
     ]
 
-    print(recordLinkage(json.load(open("config.json")), {'document':{'id':"", 'value':query},
+    print(recordLinkage(initializeRecordLinkage(json.load(open("config.json"))), {'document':{'id':"", 'value':query},
                         'entities':candidates,
-                        'processtime':'0'}, 4, {}, taggingDict, 'jobj', 'raw'))
+                        'processtime':'0'}, 4, pdict, taggingDict, 'jobj', 'raw'))
