@@ -51,8 +51,8 @@ def readConfig(EV, cpath):  # read config file from the config path, and init EV
     EV.mergeThreshold = configs['environment']['mergeThreshold']
 
 
-def RLInit(EV):
-    readConfig(EV, "config.json")
+def RLInit(EV, configPath):
+    readConfig(EV, configPath)
 
 
 ###
@@ -308,13 +308,18 @@ def entitySimilarityDict(EV, e1, e2, sdicts): # sdicts are created on canopy, e1
 # modes:
 #     'file': read from file (queries will be file path),
 #     'jline': one json line (queries will be the json line),
+#     'jobj': one json object (queries will be the json line),
 #     'jobjs': an array of json objects (queries will be the json objs array)
 ###
-def recordLinkage(EV, queries, topk, priorDict, taggingDict, inputmode='jlines', entitymode = 'raw'):
+def recordLinkage(configPath, queries, topk, priorDict, taggingDict, inputmode='jlines', entitymode = 'raw'):
+    EV = EnvVariables()
+    RLInit(EV, configPath)
     if inputmode == 'file':
         queryObjects = [json.loads(x) for x in open(queries).readlines() if x != ""]
     elif inputmode == 'jline':
         return scoreCandidates(EV, json.loads(queries), priorDict, taggingDict, topk, entitymode)
+    elif inputmode == 'jobj':
+        return scoreCandidates(EV, queries, priorDict, taggingDict, topk, entitymode)
     elif inputmode == 'jobjs':
         queryObjects = queries
 
@@ -332,8 +337,6 @@ def createGeonamesPriorDict(all_city_dict):
 
 
 if __name__ == "__main__":
-    EV = EnvVariables()
-    RLInit(EV)
 
     all_city_dict = json.load(open("/Users/majid/dig-entity-resolution/all_city_dict.json"))
     pdict = createGeonamesPriorDict(all_city_dict)
@@ -348,6 +351,6 @@ if __name__ == "__main__":
                     {'uri':"http://www.geonames.org/5337542", 'value':{'city': 'oakland', 'state': 'california', 'country':'united states'}}
     ]
 
-    print(recordLinkage(EV, [{'uri':"", 'value':query,
+    print(recordLinkage("config.json", {'uri':"", 'value':query,
                         'candidates':candidates,
-                        'processtime':'0'}], 4, {}, taggingDict, 'jobjs', 'raw'))
+                        'processtime':'0'}, 4, {}, taggingDict, 'jobj', 'raw'))

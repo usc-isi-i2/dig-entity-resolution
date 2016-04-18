@@ -1,73 +1,4 @@
 import re
-import json
-import tagging
-# Given a path in json, return value if path, full path denoted by . (example address.name) exists, otherwise return ''
-def get_value_json(path, doc, separator='.'):
-    paths = path.strip().split(separator)
-    for field in paths:
-        if field in doc:
-            doc = doc[field]
-        else:
-            return ''
-
-    if type(doc) == dict:
-        return json.dumps(doc)
-    else:
-        return doc
-
-def createGeonameDicts(refPath):
-    states = set()
-    countries = set()
-    citites = set()
-
-    for line in open(refPath):
-        jsonobj = json.loads(line)
-
-        state = get_value_json('address.addressRegion.name', jsonobj).lower()
-        if state != '':
-            states.add(state)
-
-        country = get_value_json('address.addressCountry.name', jsonobj).lower()
-        if country != '':
-            print country
-            countries.add(country)
-
-        if jsonobj['a'] == 'City':
-            names=[]
-            if 'name' in jsonobj:
-                names_d = jsonobj['name']
-                if isinstance(names_d, list):
-                    names = names_d
-                elif isinstance(names_d, str):
-                    names.append(names_d)
-
-                for name in names:
-                    citites.add(name.lower())
-    print countries
-    return {'city': {x:0 for x in citites},
-            'state': {x:0 for x in states},
-            'country': {x:0 for x in countries}}
-
-def addURIS2HT(element = {}):
-    baseURI = "https://digisi.usc.edu/ht_locations/"
-    uri = element['key']
-    uri = str(uri).replace(" ", "_")
-    uri = str(uri).replace(",", "/")
-    uri = baseURI + uri
-    element['uri'] = uri
-
-
-def readFile():
-    alldata = json.load(open("ht-sample-locations.json"))
-    allcities = alldata['aggregations']['city']['buckets']
-    for city in allcities:
-        addURIS2HT(city)
-    return allcities
-
-def convertToCSV(cities):
-    csvFile = open("ht-sample-locations.csv", "w")
-    for city in cities:
-        csvFile.write(city['uri'].lower() + "\t" + city['key'].lower() + "\n")
 
 
 def stringDistLev(seq1, seq2):
@@ -84,6 +15,7 @@ def stringDistLev(seq1, seq2):
             thisrow[y] = min(delcost, addcost, subcost)
     max_len = max({len(seq1), len(seq2)})
     return float(max_len - thisrow[len(seq2) - 1]) / float(max_len), thisrow[len(seq2) - 1]
+
 
 def stringDistSmith(strG, strR): # uses smith-waterman method
         if strG is None or strR is None or len(strG) == 0 or len(strR) == 0:
@@ -151,27 +83,13 @@ def stringDistSmith(strG, strR): # uses smith-waterman method
                 start_index, max_index,\
                 count_gap, count_mismatch
 
-def generateJson(query, matches, candidates_name):
-        jsonObj = {"uri": str(query[0]), "name": str(query[1]), candidates_name: []}
-        for match in matches:
-            candidate = {}
-            if type(match) is list or type(match) is dict or type(match) is tuple:
-                candidate["uri"] = str(match[2])
-                candidate["score"] = match[1]
-                candidate["name"] = match[0]
-            else:
-                candidate["uri"] = str(match)
-            jsonObj[candidates_name].append(candidate)
-        return jsonObj
 
-
-
-'''
-    This function gets a space separated string of words, and returns
-    all the possible tokens (length T or shorter) in the string.
-    output format:
-    {"value": token, "id": id, "covers": [], "tags": []}
-    '''
+###
+#    This function gets a space separated string of words, and returns
+#    all the possible tokens (length T or shorter) in the string.
+#    output format:
+#    {"value": token, "id": id, "covers": [], "tags": []}
+###
 def getAllTokens(string, T=-1, dicts={}):
     if T == -1:
         T = len(string)
