@@ -184,37 +184,37 @@ def createEntrySimilarityDicts(EV, queryrecord, candidateEntities):
 def scoreCandidates(EV, entry, priorDict, taggingDict, topk, mode):
     start_time = time.clock()
     if mode == 'formatted_noisy':
-        record, numtokens = getAllTokensFormatted(entry['value'], taggingDict)
+        record, numtokens = getAllTokensFormatted(entry['document']['value'], taggingDict)
         recordEntities = reformatRecord2Entity([x for x in record if len(x['tags']) != 0])
     elif mode == 'formatted_robust':
-        record, numtokens = getAllTokensFormatted(entry['value'], {})
-        recordEntities = [entry['value']]
+        record, numtokens = getAllTokensFormatted(entry['document']['value'], {})
+        recordEntities = [entry['document']['value']]
     elif mode == 'raw':
-        record, numtokens = getAllTokens(entry['value'], EV.tokLen, taggingDict)
+        record, numtokens = getAllTokens(entry['document']['value'], EV.tokLen, taggingDict)
         recordEntities = reformatRecord2Entity([x for x in record if len(x['tags']) != 0])
 
-    sdicts = createEntrySimilarityDicts(EV, record, entry['candidates'])
+    sdicts = createEntrySimilarityDicts(EV, record, entry['entities'])
     matching = []
 
-    for candidate in entry['candidates']:
+    for candidate in entry['entities']:
         # candidate_value = candidate.value.encode('utf-8')
         candidateEntity = candidate['value']
         score, covered = scoreRecordEntity(EV, recordEntities, candidateEntity, sdicts)
         notcovered = numtokens - covered
-        if candidate['uri'] in priorDict:
-            prior = float(priorDict[candidate['uri']])
+        if candidate['id'] in priorDict:
+            prior = float(priorDict[candidate['id']])
         else:
             prior = 1.0
         matching.append({'value': candidateEntity, 'score': float("{0:.4f}".format(score * prior
                                                                                 * (1.0 - (notcovered if notcovered<10 else 10)/50.0))),
-                            'uri': str(candidate['uri']), 'leftover':notcovered,
+                            'uri': str(candidate['id']), 'leftover':notcovered,
                             'prior': prior})
     matching.sort(key=lambda tup: (tup['score'], tup['prior']), reverse=True)
 
     process_time = str((time.clock() - start_time)*1000)
     if 'processtime' in entry:
         process_time += '_'+entry['processtime']
-    return {'uri': entry['uri'], 'value': entry['value'], 'matches': matching[0:topk], 'processtime': process_time,
+    return {'uri': entry['document']['id'], 'value': entry['document']['value'], 'matches': matching[0:topk], 'processtime': process_time,
                'numcandidates': len(matching)}
 
 
@@ -344,11 +344,11 @@ if __name__ == "__main__":
     taggingDict = json.load(open("/Users/majid/dig-entity-resolution/tagging_dict.json"))
 
     query = "San Francisco Oakland Emeryville Hayward California Outcalls".lower()
-    candidates = [{'uri':"http://www.geonames.org/5397765", 'value':{'city': 'san francisco', 'state': 'california', 'country':'united states'}},
-                    {'uri':"http://www.geonames.org/5391959", 'value':{'city': 'oakland', 'state': 'california', 'country':'united states'}},
-                    {'uri':"http://www.geonames.org/5337542", 'value':{'city': 'oakland', 'state': 'california', 'country':'united states'}}
+    candidates = [{'id':"http://www.geonames.org/5397765", 'value':{'city': 'san francisco', 'state': 'california', 'country':'united states'}},
+                    {'id':"http://www.geonames.org/5391959", 'value':{'city': 'oakland', 'state': 'california', 'country':'united states'}},
+                    {'id':"http://www.geonames.org/5337542", 'value':{'city': 'oakland', 'state': 'california', 'country':'united states'}}
     ]
 
-    print(recordLinkage(json.load(open("config.json")), {'uri':"", 'value':query,
-                        'candidates':candidates,
+    print(recordLinkage(json.load(open("config.json")), {'document':{'id':"", 'value':query},
+                        'entities':candidates,
                         'processtime':'0'}, 4, {}, taggingDict, 'jobj', 'raw'))
