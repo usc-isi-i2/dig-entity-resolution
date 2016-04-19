@@ -13,18 +13,19 @@ import time
 # contains necessary static variables for the code.
 ###
 class EnvVariables:
-    outputPath = ""
-    queriesPath = ""
-    priorDictsPath = ""
-    attributes = {}
-    allTags = ["UNK"]
-    similarityDicts = []
-    RecordLeftoverPenalty = 0.7
-    mergeThreshold = 0.5
-    tokLen = -1
+    # outputPath = ""
+    # queriesPath = ""
+    # priorDictsPath = ""
+    # attributes = {}
+    # allTags = ["UNK"]
+    # similarityDicts = []
+    # RecordLeftoverPenalty = 0.7
+    # mergeThreshold = 0.5
+    # tokLen = -1
 
 
 def readConfig(EV, configs):  # read config file from the config path, and init EV (environment variable)
+    EV = {}
     for jobject in configs['attributes']:
         attrName = jobject['attr']
         attrType = jobject['type']
@@ -50,7 +51,7 @@ def readConfig(EV, configs):  # read config file from the config path, and init 
 
 
 def initializeRecordLinkage(configs):
-    EV = EnvVariables()
+    # EV = EnvVariables()
     readConfig(EV, configs)
     return EV
 
@@ -184,6 +185,7 @@ def createEntrySimilarityDicts(EV, queryrecord, candidateEntities):
 #   raw: the mentions are in raw string format
 ###
 def scoreCandidates(EV, entry, priorDict, taggingDict, topk, mode):
+    print EV.allTags
     start_time = time.clock()
     if mode == 'formatted_noisy':
         record, numtokens = getAllTokensFormatted(entry['document']['value'], taggingDict)
@@ -324,18 +326,9 @@ def recordLinkage(EV, queries, topk, priorDict, taggingDict, inputmode='jobj', e
     return [scoreCandidates(EV, xx, priorDict, taggingDict, topk, entitymode) for xx in queryObjects]
 
 
-def createGeonamesPriorDict(all_city_dict):
-    pdict = {}
-    for uri, val in all_city_dict.items():
-        population = int(val['populationOfArea'])
-        effective_population = population + (int(1e7) if val['snc'].split(',')[1].lower() == 'united states' else 0)
-        prior = (1.0 - 1.0/math.log(effective_population + 2000))
-        pdict.update({uri: prior})
-    return pdict
-
-
 if __name__ == "__main__":
 
+    """Read all dictionaries from disk, do not create
     all_city_dict = json.load(open("/Users/majid/dig-entity-resolution/all_city_dict.json"))
     pdict = createGeonamesPriorDict(all_city_dict)
     # pdictpath = args[0]
@@ -352,3 +345,4 @@ if __name__ == "__main__":
     print(recordLinkage(initializeRecordLinkage(json.load(open("config.json"))), {'document':{'id':"", 'value':query},
                         'entities':candidates,
                         'processtime':'0'}, 4, pdict, taggingDict, 'jobj', 'raw'))
+    """
