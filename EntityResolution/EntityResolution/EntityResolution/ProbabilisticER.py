@@ -8,24 +8,12 @@ import math
 import json
 import time
 
-
-###
-# contains necessary static variables for the code.
-###
-class EnvVariables:
-    # outputPath = ""
-    # queriesPath = ""
-    # priorDictsPath = ""
-    # attributes = {}
-    # allTags = ["UNK"]
-    # similarityDicts = []
-    # RecordLeftoverPenalty = 0.7
-    # mergeThreshold = 0.5
-    # tokLen = -1
-
-
-def readConfig(EV, configs):  # read config file from the config path, and init EV (environment variable)
-    EV = {}
+def readConfig(configs):  # read config file from the config path, and init EV (environment variable)
+    EV = {'attributes': {},
+          'allTags': [],
+          'tokLen': -1,
+          'similarityDicts': [],
+          'RecordLeftoverPenalty': 0.8}
     for jobject in configs['attributes']:
         attrName = jobject['attr']
         attrType = jobject['type']
@@ -35,25 +23,23 @@ def readConfig(EV, configs):  # read config file from the config path, and init 
         attrMismatch = jobject['probability_mismatch']
         attrMissInEnt = jobject['probability_missing_in_entity']
         attrMissInMent = jobject['probability_missing_in_mention']
-        EV.attributes.update({attrName: {'type': attrType,
+        EV['attributes'].update({attrName: {'type': attrType,
                                            'probNotInDict': attrNotInDict,
                                            'probAltName': attrAltName,
                                            'probSpellingError': attrSpellingError,
                                            'probMissingInRec': attrMissInMent,
                                            'probMissingInEntity': attrMissInEnt,
                                            'probMismatch': attrMismatch}})
-        EV.allTags.append(attrName)
+        EV['allTags'].append(attrName)
 
-    EV.tokLen = configs['environment']['tokenizer_granularity']
-    EV.similarityDicts = [{} for xx in EV.allTags]
-    EV.RecordLeftoverPenalty = configs['environment']['RecordLeftoverPenalty']
-    EV.mergeThreshold = configs['environment']['mergeThreshold']
+    EV['tokLen'] = configs['environment']['tokenizer_granularity']
+    EV['similarityDicts'] = [{} for xx in EV['allTags']]
+    EV['RecordLeftoverPenalty'] = configs['environment']['RecordLeftoverPenalty']
+    return EV
 
 
 def initializeRecordLinkage(configs):
-    # EV = EnvVariables()
-    readConfig(EV, configs)
-    return EV
+    return readConfig(configs)
 
 
 ###
@@ -65,9 +51,9 @@ def scoreFieldFromDict(EV, sdicts, mentionField, entityField, tag, priorDicts={}
     covered = 0
 
     if entityField is None:  # todo: find it in the dictionary and get the prior probabilities
-        score = EV.attributes[tag]['probMissingInEntity']
+        score = EV['attributes'][tag]['probMissingInEntity']
     elif mentionField is None:
-        score = EV.attributes[tag]['probMissingInRec']
+        score = EV['attributes'][tag]['probMissingInRec']
     else:
         # todo: here we have to put some penalty for many values
         if type(mentionField) is set:
@@ -108,7 +94,7 @@ def scoreFieldFromDict(EV, sdicts, mentionField, entityField, tag, priorDicts={}
 # based on field type, by looking up in similarity lookup dictionary
 ###
 def scoreFieldValueFromDict(EV, sdicts, mentionVal, entityVal, tag):
-    if EV.attributes[tag]['type'] == "string":
+    if EV['attributes'][tag]['type'] == "string":
         key = entityVal+mentionVal
         if key in sdicts[tag]:
             return sdicts[tag][key]
@@ -121,16 +107,16 @@ def scoreFieldValueFromDict(EV, sdicts, mentionVal, entityVal, tag):
 ###
 def scoreFieldValue(EV, mentionField, entityField, tag):
     score = 0.0
-    if EV.attributes[tag]['type'] == "string":
+    if EV['attributes'][tag]['type'] == "string":
         (tempscore, gap) = stringDistLev(entityField, mentionField)
         if gap == 0:  # exact match
             score = 1.0
         elif (len(entityField)>8 and gap < 3) or\
              (len(entityField)>5 and gap == 1):  # spelling mistake
-            score = EV.attributes[tag]['probSpellingError']
+            score = EV['attributes'][tag]['probSpellingError']
         else:  # mismatch probability
             # score = tempscore
-            return EV.attributes[tag]['probMismatch']
+            return EV['attributes'][tag]['probMismatch']
     return score
 
 
@@ -155,12 +141,12 @@ def scoreRecordEntity(EV, recordEntities, entity, similarityDicts):  # record an
 ###
 def createEntrySimilarityDicts(EV, queryrecord, candidateEntities):
     sdicts = {}
-    for xx in EV.allTags:
+    for xx in EV['allTags']:
         sdicts.update({xx:{}})
     for candidate in candidateEntities:
         candidateEntity = candidate['value']
         for record in queryrecord:
-                for tag in EV.allTags:
+                for tag in EV['allTags']:
                     if tag in record['tags']:
                         if tag == 'UNK':
                             for tag_ in candidateEntity:
@@ -185,7 +171,7 @@ def createEntrySimilarityDicts(EV, queryrecord, candidateEntities):
 #   raw: the mentions are in raw string format
 ###
 def scoreCandidates(EV, entry, priorDict, taggingDict, topk, mode):
-    print EV.allTags
+    print EV['allTags']
     start_time = time.clock()
     if mode == 'formatted_noisy':
         record, numtokens = getAllTokensFormatted(entry['document']['value'], taggingDict)
@@ -194,7 +180,7 @@ def scoreCandidates(EV, entry, priorDict, taggingDict, topk, mode):
         record, numtokens = getAllTokensFormatted(entry['document']['value'], {})
         recordEntities = [entry['document']['value']]
     elif mode == 'raw':
-        record, numtokens = getAllTokens(entry['document']['value'], EV.tokLen, taggingDict)
+        record, numtokens = getAllTokens(entry['document']['value'], EV['tokLen'], taggingDict)
         recordEntities = reformatRecord2Entity([x for x in record if len(x['tags']) != 0])
 
     sdicts = createEntrySimilarityDicts(EV, record, entry['entities'])
@@ -327,10 +313,10 @@ def recordLinkage(EV, queries, topk, priorDict, taggingDict, inputmode='jobj', e
 
 
 if __name__ == "__main__":
-
-    """Read all dictionaries from disk, do not create
-    all_city_dict = json.load(open("/Users/majid/dig-entity-resolution/all_city_dict.json"))
-    pdict = createGeonamesPriorDict(all_city_dict)
+    '''
+    # Read all dictionaries from disk, do not create
+    # all_city_dict = json.load(open("/Users/majid/dig-entity-resolution/all_city_dict.json"))
+    # pdict = createGeonamesPriorDict(all_city_dict)
     # pdictpath = args[0]
     # tdictpath = ""
 
@@ -344,5 +330,5 @@ if __name__ == "__main__":
 
     print(recordLinkage(initializeRecordLinkage(json.load(open("config.json"))), {'document':{'id':"", 'value':query},
                         'entities':candidates,
-                        'processtime':'0'}, 4, pdict, taggingDict, 'jobj', 'raw'))
-    """
+                        'processtime':'0'}, 4, {}, taggingDict, 'jobj', 'raw'))
+    '''
