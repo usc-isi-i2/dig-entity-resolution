@@ -171,40 +171,47 @@ def createEntrySimilarityDicts(EV, queryrecord, candidateEntities):
 #   raw: the mentions are in raw string format
 ###
 def scoreCandidates(EV, entry, priorDict, taggingDict, topk, mode):
-    if entry:
-        start_time = time.clock()
-        if mode == 'formatted_noisy':
-            record, numtokens = getAllTokensFormatted(entry['document']['value'], taggingDict)
-            recordEntities = reformatRecord2Entity([x for x in record if len(x['tags']) != 0])
-        elif mode == 'formatted_robust':
-            record, numtokens = getAllTokensFormatted(entry['document']['value'], {})
-            recordEntities = [entry['document']['value']]
-        elif mode == 'raw':
-            record, numtokens = getAllTokens(entry['document']['value'], EV['tokLen'], taggingDict)
-            recordEntities = reformatRecord2Entity([x for x in record if len(x['tags']) != 0])
+    start_time = time.clock()
+    if mode == 'formatted_noisy':
+        record, numtokens = getAllTokensFormatted(entry['document']['value'], taggingDict)
+        recordEntities = reformatRecord2Entity([x for x in record if len(x['tags']) != 0])
+    elif mode == 'formatted_robust':
+        record, numtokens = getAllTokensFormatted(entry['document']['value'], {})
+        recordEntities = [entry['document']['value']]
+    elif mode == 'raw':
+        record, numtokens = getAllTokens(entry['document']['value'], EV['tokLen'], taggingDict)
+        recordEntities = reformatRecord2Entity([x for x in record if len(x['tags']) != 0])
 
-        sdicts = createEntrySimilarityDicts(EV, record, entry['entities'])
-        matching = []
+    tempEntities = []
+    for ent in entry['entities']:
+        newent = {}
+        for key, val in ent['value'].items():
+            newent.update({key:val.lower()})
+        tempEntities.append({'value':newent, 'id':ent['id']})
+    sdicts = createEntrySimilarityDicts(EV, record, tempEntities)
 
-        for candidate in entry['entities']:
-            # candidate_value = candidate.value.encode('utf-8')
-            candidateEntity = candidate['value']
-            score, covered = scoreRecordEntity(EV, recordEntities, candidateEntity, sdicts)
-            notcovered = numtokens - covered
-            if candidate['id'] in priorDict:
-                prior = float(priorDict[candidate['id']])
-            else:
-                prior = 1.0
-            matching.append({'value': candidateEntity, 'score': float("{0:.4f}".format(score * prior
-                                                                                    * (1.0 - (notcovered if notcovered<10 else 10)/50.0))),
-                                'uri': str(candidate['id']), 'leftover':notcovered,
-                                'prior': prior})
-        matching.sort(key=lambda tup: (tup['score'], tup['prior']), reverse=True)
+    matching = []
 
-        process_time = str((time.clock() - start_time)*1000)
-        if 'processtime' in entry:
-            process_time += '_'+entry['processtime']
-        return {'uri': entry['document']['id'], 'value': entry['document']['value'], 'matches': matching[0:topk], 'processtime': process_time,
+    for i, candidate in enumerate(tempEntities):
+        # candidate_value = candidate.value.encode('utf-8')
+        candidateEntity = candidate['value']
+
+        score, covered = scoreRecordEntity(EV, recordEntities, candidateEntity, sdicts)
+        notcovered = numtokens - covered
+        if candidate['id'] in priorDict:
+            prior = float(priorDict[candidate['id']])
+        else:
+            prior = 1.0
+        matching.append({'value': entry['entities'][i]['value'], 'score': float("{0:.4f}".format(score * prior
+                                                                                * (1.0 - (notcovered if notcovered<10 else 10)/50.0))),
+                            'uri': str(candidate['id']), 'leftover':notcovered,
+                            'prior': prior})
+    matching.sort(key=lambda tup: (tup['score'], tup['prior']), reverse=True)
+
+    process_time = str((time.clock() - start_time)*1000)
+    if 'processtime' in entry:
+        process_time += '_'+entry['processtime']
+    return {'uri': entry['document']['id'], 'value': entry['document']['value'], 'matches': matching[0:topk], 'processtime': process_time,
                'numcandidates': len(matching)}
 
 
