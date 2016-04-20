@@ -154,9 +154,10 @@ def createEntrySimilarityDicts(EV, queryrecord, candidateEntities):
                                 if key not in sdicts[tag_]:
                                     sdicts[tag_].update({key: scoreFieldValue(EV, record['value'], candidateEntity[tag_], tag_)})
                         else:
-                            key = candidateEntity[tag] + str(record['value'])
-                            if key not in sdicts[tag]:
-                                sdicts[tag].update({key: scoreFieldValue(EV, record['value'], candidateEntity[tag], tag)})
+                            if tag in candidateEntity:
+                                key = candidateEntity[tag] + str(record['value'])
+                                if key not in sdicts[tag]:
+                                    sdicts[tag].update({key: scoreFieldValue(EV, record['value'], candidateEntity[tag], tag)})
     return sdicts
 
 
