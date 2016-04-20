@@ -172,6 +172,8 @@ def createEntrySimilarityDicts(EV, queryrecord, candidateEntities):
 #   raw: the mentions are in raw string format
 ###
 def scoreCandidates(EV, entry, priorDict, taggingDict, topk, mode):
+    if entry is None:
+        return None
     start_time = time.clock()
     if mode == 'formatted_noisy':
         record, numtokens = getAllTokensFormatted(entry['document']['value'], taggingDict)
