@@ -66,6 +66,15 @@ def scoreFieldFromDict(EV, sdicts, mentionField, entityField, tag, priorDicts={}
                             tempscore = temp
                             covered = len(xx.strip().split())
                 score = tempscore
+            elif type(entityField) is list:
+                tempscore = 0
+                for xx in mentionField:
+                    for yy in entityField:
+                        temp = scoreFieldValueFromDict(EV, sdicts, xx, yy, tag)
+                        if temp > tempscore:
+                            tempscore = temp
+                            covered = len(xx.strip().split())
+                score = tempscore
             else:
                 tempscore = 0
                 for xx in mentionField:
@@ -105,7 +114,7 @@ def scoreFieldValueFromDict(EV, sdicts, mentionVal, entityVal, tag):
 # this function gives the similarity between two values of the same field
 # based on field type.
 ###
-def scoreFieldValue(EV, mentionField, entityField, tag):
+def scoreFieldValue(EV, mentionField, entityField, tag, preferredName=True):
     score = 0.0
     if EV['attributes'][tag]['type'] == "string":
         (tempscore, gap) = stringDistLev(entityField, mentionField)
@@ -117,6 +126,12 @@ def scoreFieldValue(EV, mentionField, entityField, tag):
         else:  # mismatch probability
             # score = tempscore
             return EV['attributes'][tag]['probMismatch']
+    if not preferredName:
+        if score < 0.95:
+            score = 0.0
+        else:
+            score *= 0.9
+
     return score
 
 
@@ -145,19 +160,47 @@ def createEntrySimilarityDicts(EV, queryrecord, candidateEntities):
         sdicts.update({xx:{}})
     for candidate in candidateEntities:
         candidateEntity = candidate['value']
+        print(queryrecord)
         for record in queryrecord:
                 for tag in EV['allTags']:
                     if tag in record['tags']:
                         if tag == 'UNK':
                             for tag_ in candidateEntity:
-                                key = candidateEntity[tag_] + str(record['value'])
-                                if key not in sdicts[tag_]:
-                                    sdicts[tag_].update({key: scoreFieldValue(EV, record['value'], candidateEntity[tag_], tag_)})
+                                if type(candidateEntity[tag_]) is list:
+                                    preferredName = candidateEntity[tag_][0]
+                                    altNames = candidateEntity[tag_][1:]
+                                    key = preferredName + str(record['value'])
+                                    if key not in sdicts[tag_]:
+                                        sdicts[tag_].update({key: scoreFieldValue(EV, record['value'], preferredName, tag_)})
+                                    for name in altNames:
+                                        key = name + str(record['value'])
+                                        if key not in sdicts[tag_]:
+                                            sdicts[tag_].update({key: scoreFieldValue(EV, record['value'],
+                                                                                      name, tag_,
+                                                                                      preferredName=False)})
+                                else:
+                                    key = candidateEntity[tag_] + str(record['value'])
+                                    if key not in sdicts[tag_]:
+                                        sdicts[tag_].update({key: scoreFieldValue(EV, record['value'], candidateEntity[tag_], tag_)})
+
                         else:
                             if tag in candidateEntity:
-                                key = candidateEntity[tag] + str(record['value'])
-                                if key not in sdicts[tag]:
-                                    sdicts[tag].update({key: scoreFieldValue(EV, record['value'], candidateEntity[tag], tag)})
+                                if type(candidateEntity[tag]) is list:
+                                    preferredName = candidateEntity[tag][0]
+                                    altNames = candidateEntity[tag][1:]
+                                    key = preferredName + str(record['value'])
+                                    if key not in sdicts[tag]:
+                                        sdicts[tag].update({key: scoreFieldValue(EV, record['value'], preferredName, tag)})
+                                    for name in altNames:
+                                        key = name + str(record['value'])
+                                        if key not in sdicts[tag]:
+                                            sdicts[tag].update({key: scoreFieldValue(EV, record['value'],
+                                                                                      name, tag,
+                                                                                      preferredName=False)})
+                                else:
+                                    key = candidateEntity[tag] + str(record['value'])
+                                    if key not in sdicts[tag]:
+                                        sdicts[tag].update({key: scoreFieldValue(EV, record['value'], candidateEntity[tag], tag)})
     return sdicts
 
 
@@ -189,9 +232,14 @@ def scoreCandidates(EV, entry, priorDict, taggingDict, topk, mode):
     for ent in entry['entities']:
         newent = {}
         for key, val in ent['value'].items():
-            newent.update({key:val.lower()})
+            if type(val) is list:
+                val = [x.lower() for x in val]
+            else:
+                val = val.lower()
+            newent.update({key:val}) #todo: lower
         tempEntities.append({'value':newent, 'id':ent['id']})
     sdicts = createEntrySimilarityDicts(EV, record, tempEntities)
+    print("sdicts: " + str(sdicts))
 
     matching = []
 
@@ -313,32 +361,57 @@ def recordLinkage(EV, queries, topk, priorDict, taggingDict, inputmode='jobj', e
     if inputmode == 'file':
         queryObjects = [json.loads(x) for x in open(queries).readlines() if x != ""]
     elif inputmode == 'jline':
+        # queryObjects = queries
         return scoreCandidates(EV, json.loads(queries), priorDict, taggingDict, topk, entitymode)
     elif inputmode == 'jobj':
+        # queryObjects = queries
         return scoreCandidates(EV, queries, priorDict, taggingDict, topk, entitymode)
     elif inputmode == 'jobjs':
         queryObjects = queries
 
+    # retrieve info from query object
     return [scoreCandidates(EV, xx, priorDict, taggingDict, topk, entitymode) for xx in queryObjects]
 
 
 if __name__ == "__main__":
-    '''
     # Read all dictionaries from disk, do not create
-    # all_city_dict = json.load(open("/Users/majid/dig-entity-resolution/all_city_dict.json"))
+    all_city_dict = json.load(open("/Users/majid/dig-entity-resolution/all_city_dict.json"))
     # pdict = createGeonamesPriorDict(all_city_dict)
     # pdictpath = args[0]
     # tdictpath = ""
 
     taggingDict = json.load(open("/Users/majid/dig-entity-resolution/tagging_dict.json"))
 
-    query = "San Francisco Oakland Emeryville Hayward California Outcalls".lower()
-    candidates = [{'id':"http://www.geonames.org/5397765", 'value':{'city': 'san francisco', 'state': 'california', 'country':'united states'}},
-                    {'id':"http://www.geonames.org/5391959", 'value':{'city': 'oakland', 'state': 'california', 'country':'united states'}},
-                    {'id':"http://www.geonames.org/5337542", 'value':{'city': 'oakland', 'state': 'california', 'country':'united states'}}
+    query = "San Francisco Oakland Emeryville Hayward California Outcalls, USA".lower()
+    candidates = [{'id':"http://www.geonames.org/5397765", 'value': {'city': ['san francisco', 'SF'],
+                                                                     'state': ['california', 'ca'],
+                                                                     'country':['united states', 'us', 'usa']}},
+                    {'id':"http://www.geonames.org/5391959", 'value': {'city': ['oakland', 'ok'],
+                                                                       'state': ['california', 'ca'],
+                                                                       'country':['united states', 'us', 'usa']}},
+                    {'id':"http://www.geonames.org/5337542", 'value': {'city': ['los angeles', 'la'],
+                                                                       'state': ['california', 'ca'],
+                                                                       'country':['united states', 'us', 'usa']}}
     ]
-
+    # jobj = {"entities": {"http://www.geonames.org/11039049":
+    #                  {"value": "Bandapalli", "candwins": [{"start": 0, "score": 1.0, "end": 8},
+    #                                                       {"start": 1, "score": 0.8888888888888888, "end": 8},
+    #                                                       {"start": 2, "score": 0.7777777777777778, "end": 8},
+    #                                                       {"start": 3, "score": 0.6666666666666666, "end": 8},
+    #                                                       {"start": 4, "score": 0.5555555555555556, "end": 8}]}},
+    # "document": {"id": "123", "value": "Bandapalli,Pradesh,India"}, "processtime": "0.331"}
+    #
+    # candidates = []
+    # for uri in jobj['entities'].keys():
+    #     geoname = all_city_dict[uri]
+    #     city = geoname['name']
+    #     state = geoname['state']
+    #     country = geoname['country']
+    #     candidates.append({'id': uri,
+    #                        'value': {'city': city if type(city) is list else [city],
+    #                                 'state': city if type(state) is list else [state],
+    #                                 'country': city if type(country) is list else [country]}})
     print(recordLinkage(initializeRecordLinkage(json.load(open("config.json"))), {'document':{'id':"", 'value':query},
                         'entities':candidates,
                         'processtime':'0'}, 4, {}, taggingDict, 'jobj', 'raw'))
-    '''
+
