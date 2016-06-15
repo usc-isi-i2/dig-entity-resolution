@@ -10,7 +10,7 @@ import time
 
 def readConfig(configs):  # read config file from the config path, and init EV (environment variable)
     EV = {'attributes': {},
-          'allTags': [],
+          'allTags': set(),
           'tokLen': -1,
           'similarityDicts': [],
           'RecordLeftoverPenalty': 0.8}
@@ -30,7 +30,7 @@ def readConfig(configs):  # read config file from the config path, and init EV (
                                            'probMissingInRec': attrMissInMent,
                                            'probMissingInEntity': attrMissInEnt,
                                            'probMismatch': attrMismatch}})
-        EV['allTags'].append(attrName)
+        EV['allTags'].add(attrName)
 
     EV['tokLen'] = configs['environment']['tokenizer_granularity']
     EV['similarityDicts'] = [{} for xx in EV['allTags']]
@@ -131,7 +131,7 @@ def scoreFieldValue(EV, mentionField, entityField, tag, preferredName=True):
             score = 0.0
         else:
             score *= 0.9
-
+    # print(mentionField + " " + entityField + " " + str(score))
     return score
 
 
@@ -160,13 +160,14 @@ def createEntrySimilarityDicts(EV, queryrecord, candidateEntities):
         sdicts.update({xx:{}})
     for candidate in candidateEntities:
         candidateEntity = candidate['value']
-        print(queryrecord)
         for record in queryrecord:
                 for tag in EV['allTags']:
                     if tag in record['tags']:
                         if tag == 'UNK':
                             for tag_ in candidateEntity:
                                 if type(candidateEntity[tag_]) is list:
+                                    if len(candidateEntity[tag_]) == 0:
+                                        continue
                                     preferredName = candidateEntity[tag_][0]
                                     altNames = candidateEntity[tag_][1:]
                                     key = preferredName + str(record['value'])
@@ -186,6 +187,8 @@ def createEntrySimilarityDicts(EV, queryrecord, candidateEntities):
                         else:
                             if tag in candidateEntity:
                                 if type(candidateEntity[tag]) is list:
+                                    if len(candidateEntity[tag]) == 0:
+                                        continue
                                     preferredName = candidateEntity[tag][0]
                                     altNames = candidateEntity[tag][1:]
                                     key = preferredName + str(record['value'])
@@ -228,6 +231,19 @@ def scoreCandidates(EV, entry, priorDict, taggingDict, topk, mode):
         record, numtokens = getAllTokens(entry['document']['value'], EV['tokLen'], taggingDict)
         recordEntities = reformatRecord2Entity([x for x in record if len(x['tags']) != 0])
 
+    # aggrigate all the tags
+    # print(record)
+    aggrtags = set()
+    for x in record:
+        aggrtags.update(x['tags'])
+
+    # print(aggrtags)
+    maxscore = 1.0
+    for x in (EV['allTags'] - aggrtags - set(["UNK"])):
+        # print(EV['attributes'][x]['probMissingInRec'])
+        maxscore *= EV['attributes'][x]['probMissingInRec']
+        # print(x)
+    # print("max score: " + str(maxscore))
     tempEntities = []
     for ent in entry['entities']:
         newent = {}
@@ -239,7 +255,7 @@ def scoreCandidates(EV, entry, priorDict, taggingDict, topk, mode):
             newent.update({key:val}) #todo: lower
         tempEntities.append({'value':newent, 'id':ent['id']})
     sdicts = createEntrySimilarityDicts(EV, record, tempEntities)
-    print("sdicts: " + str(sdicts))
+    # print("sdicts: " + str(sdicts))
 
     matching = []
 
@@ -257,13 +273,14 @@ def scoreCandidates(EV, entry, priorDict, taggingDict, topk, mode):
                                                                                 * (1.0 - (notcovered if notcovered<10 else 10)/50.0))),
                             'uri': str(candidate['id']), 'leftover':notcovered,
                             'prior': prior})
+    # matching = [x for x in matching if x['score'] > (maxscore*tolerance)]
     matching.sort(key=lambda tup: (tup['score'], tup['prior']), reverse=True)
 
     process_time = str((time.clock() - start_time)*1000)
     if 'processtime' in entry:
         process_time += '_'+entry['processtime']
-    return {'uri': entry['document']['id'], 'value': entry['document']['value'], 'matches': matching[0:topk], 'processtime': process_time,
-               'numcandidates': len(matching)}
+    return {'uri': entry['document']['id'], 'value': entry['document']['value'], 'matches': matching[:topk], 'processtime': process_time,
+               'numcandidates': len(matching), 'acceptanceth': maxscore*0.75}
 
 
 def reformatRecord2EntityHelper(record, covered=set()):
@@ -372,46 +389,61 @@ def recordLinkage(EV, queries, topk, priorDict, taggingDict, inputmode='jobj', e
     # retrieve info from query object
     return [scoreCandidates(EV, xx, priorDict, taggingDict, topk, entitymode) for xx in queryObjects]
 
-
-if __name__ == "__main__":
-    # Read all dictionaries from disk, do not create
-    all_city_dict = json.load(open("/Users/majid/dig-entity-resolution/all_city_dict.json"))
-    # pdict = createGeonamesPriorDict(all_city_dict)
-    # pdictpath = args[0]
-    # tdictpath = ""
-
-    taggingDict = json.load(open("/Users/majid/dig-entity-resolution/tagging_dict.json"))
-
-    query = "San Francisco Oakland Emeryville Hayward California Outcalls, USA".lower()
-    candidates = [{'id':"http://www.geonames.org/5397765", 'value': {'city': ['san francisco', 'SF'],
-                                                                     'state': ['california', 'ca'],
-                                                                     'country':['united states', 'us', 'usa']}},
-                    {'id':"http://www.geonames.org/5391959", 'value': {'city': ['oakland', 'ok'],
-                                                                       'state': ['california', 'ca'],
-                                                                       'country':['united states', 'us', 'usa']}},
-                    {'id':"http://www.geonames.org/5337542", 'value': {'city': ['los angeles', 'la'],
-                                                                       'state': ['california', 'ca'],
-                                                                       'country':['united states', 'us', 'usa']}}
-    ]
-    # jobj = {"entities": {"http://www.geonames.org/11039049":
-    #                  {"value": "Bandapalli", "candwins": [{"start": 0, "score": 1.0, "end": 8},
-    #                                                       {"start": 1, "score": 0.8888888888888888, "end": 8},
-    #                                                       {"start": 2, "score": 0.7777777777777778, "end": 8},
-    #                                                       {"start": 3, "score": 0.6666666666666666, "end": 8},
-    #                                                       {"start": 4, "score": 0.5555555555555556, "end": 8}]}},
-    # "document": {"id": "123", "value": "Bandapalli,Pradesh,India"}, "processtime": "0.331"}
-    #
-    # candidates = []
-    # for uri in jobj['entities'].keys():
-    #     geoname = all_city_dict[uri]
-    #     city = geoname['name']
-    #     state = geoname['state']
-    #     country = geoname['country']
-    #     candidates.append({'id': uri,
-    #                        'value': {'city': city if type(city) is list else [city],
-    #                                 'state': city if type(state) is list else [state],
-    #                                 'country': city if type(country) is list else [country]}})
-    print(recordLinkage(initializeRecordLinkage(json.load(open("config.json"))), {'document':{'id':"", 'value':query},
-                        'entities':candidates,
-                        'processtime':'0'}, 4, {}, taggingDict, 'jobj', 'raw'))
+# def reformatDocs(jobj, all_city_dict):
+#     # print(jobj)
+#     candidates = []
+#     for uri in jobj['entities'].keys():
+#         geoname = all_city_dict[uri]
+#         city = geoname['name']
+#         state = geoname['state']
+#         country = geoname['country']
+#         candidates.append({'id': uri,
+#                            'value': {'city': city if type(city) is list else [city],
+#                                     'state': state if type(state) is list else [state],
+#                                     'country': country if type(country) is list else [country]}})
+#     return {'document': jobj['document'], 'entities': candidates, 'processtime': jobj['processtime']}
+#
+# if __name__ == "__main__":
+#     # Read all dictionaries from disk, do not create
+#     all_city_dict = json.load(open("/Users/majid/dig-entity-resolution/all_city_dict.json"))
+#     # pdict = createGeonamesPriorDict(all_city_dict)
+#     # pdictpath = args[0]
+#     # tdictpath = ""
+#
+#     taggingDict = json.load(open("/Users/majid/dig-entity-resolution/tagging_dict.json"))
+#
+#     query = "San Francisco Oakland Emeryville Hayward California Outcalls, USA".lower()
+#     candidates = [{'id':"http://www.geonames.org/5397765", 'value': {'city': ['san francisco', 'SF'],
+#                                                                      'state': ['california', 'ca'],
+#                                                                      'country':['united states', 'us', 'usa']}},
+#                     {'id':"http://www.geonames.org/5391959", 'value': {'city': ['oakland', 'ok'],
+#                                                                        'state': ['california', 'ca'],
+#                                                                        'country':['united states', 'us', 'usa']}},
+#                     {'id':"http://www.geonames.org/5337542", 'value': {'city': ['los angeles', 'la'],
+#                                                                        'state': ['california', 'ca'],
+#                                                                        'country':['united states', 'us', 'usa']}}
+#     ]
+#     # jobj = {"entities": {"http://www.geonames.org/11039049":
+#     #                  {"value": "Bandapalli", "candwins": [{"start": 0, "score": 1.0, "end": 8},
+#     #                                                       {"start": 1, "score": 0.8888888888888888, "end": 8},
+#     #                                                       {"start": 2, "score": 0.7777777777777778, "end": 8},
+#     #                                                       {"start": 3, "score": 0.6666666666666666, "end": 8},
+#     #                                                       {"start": 4, "score": 0.5555555555555556, "end": 8}]}},
+#     # "document": {"id": "123", "value": "Bandapalli,Pradesh,India"}, "processtime": "0.331"}
+#     #
+#     # candidates = []
+#     # for uri in jobj['entities'].keys():
+#     #     geoname = all_city_dict[uri]
+#     #     city = geoname['name']
+#     #     state = geoname['state']
+#     #     country = geoname['country']
+#     #     candidates.append({'id': uri,
+#     #                        'value': {'city': city if type(city) is list else [city],
+#     #                                 'state': city if type(state) is list else [state],
+#     #                                 'country': city if type(country) is list else [country]}})
+#
+#     test = {"entities": {"http://www.geonames.org/1791347": {"value": "Wucheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/5821086": {"value": "Cheyenne", "candwins": [{"start": 0, "score": 0.5714285714285714, "end": 5}]}, "http://www.geonames.org/2330100": {"value": "Minna", "candwins": [{"start": 3, "score": 0.5, "end": 6}]}, "http://www.geonames.org/1786759": {"value": "Yicheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/1260454": {"value": "Panna", "candwins": [{"start": 3, "score": 0.5, "end": 6}]}, "http://www.geonames.org/1861641": {"value": "Ina", "candwins": [{"start": 4, "score": 0.5, "end": 6}]}, "http://www.geonames.org/1802068": {"value": "Lucheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/1519030": {"value": "Chu", "candwins": [{"start": 0, "score": 0.5, "end": 2}]}, "http://www.geonames.org/2038679": {"value": "Acheng", "candwins": [{"start": 0, "score": 0.6, "end": 4}]}, "http://www.geonames.org/3077835": {"value": "Cheb", "candwins": [{"start": 0, "score": 0.6666666666666666, "end": 3}]}, "http://www.geonames.org/2037252": {"value": "Genhe", "candwins": [{"start": 1, "score": 0.5, "end": 4}]}, "http://www.geonames.org/337771": {"value": "Fiche", "candwins": [{"start": 0, "score": 0.5, "end": 3}]}, "http://www.geonames.org/162199": {"value": "Annau", "candwins": [{"start": 3, "score": 0.5, "end": 6}]}, "http://www.geonames.org/2925259": {"value": "Frechen", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/1529363": {"value": "Kuche", "candwins": [{"start": 0, "score": 0.5, "end": 3}]}, "http://www.geonames.org/1848550": {"value": "Yanai", "candwins": [{"start": 4, "score": 0.5, "end": 7}]}, "http://www.geonames.org/2038087": {"value": "Chengde", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/2744514": {"value": "Wijchen", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/1156257": {"value": "Ban Na", "candwins": [{"start": 3, "score": 0.5, "end": 6}]}, "http://www.geonames.org/1811729": {"value": "Encheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/4901663": {"value": "McHenry", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/138742": {"value": "Chenaran", "candwins": [{"start": 0, "score": 0.5, "end": 6}]}, "http://www.geonames.org/2906376": {"value": "Hennef", "candwins": [{"start": 1, "score": 0.6, "end": 5}]}, "http://www.geonames.org/1259931": {"value": "Pen", "candwins": [{"start": 2, "score": 0.5, "end": 4}]}, "http://www.geonames.org/1253013": {"value": "Wai", "candwins": [{"start": 5, "score": 0.5, "end": 7}]}, "http://www.geonames.org/3698390": {"value": "Chepen", "candwins": [{"start": 0, "score": 0.6, "end": 4}]}, "http://www.geonames.org/2895044": {"value": "Jena", "candwins": [{"start": 2, "score": 0.5, "end": 6}]}, "http://www.geonames.org/3445764": {"value": "Unai", "candwins": [{"start": 4, "score": 0.6666666666666666, "end": 7}]}, "http://www.geonames.org/2761369": {"value": "Vienna", "candwins": [{"start": 2, "score": 0.6, "end": 6}]}, "http://www.geonames.org/1786760": {"value": "Yicheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/2493918": {"value": "Hennaya", "candwins": [{"start": 1, "score": 0.6666666666666666, "end": 6}, {"start": 2, "score": 0.5, "end": 6}]}, "http://www.geonames.org/1253783": {"value": "Una", "candwins": [{"start": 4, "score": 0.5, "end": 6}]}, "http://www.geonames.org/1789427": {"value": "Wacheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/1801582": {"value": "Macheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/1802788": {"value": "Licheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/1803791": {"value": "Licheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/1785980": {"value": "Yucheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/1698548": {"value": "Naic", "candwins": [{"start": 4, "score": 0.6666666666666666, "end": 7}]}, "http://www.geonames.org/1799832": {"value": "Pucheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/1787837": {"value": "Xucheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/1811929": {"value": "Ducheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/1815286": {"value": "Chengdu", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/2820087": {"value": "Unna", "candwins": [{"start": 3, "score": 0.6666666666666666, "end": 6}]}, "http://www.geonames.org/3169561": {"value": "Ravenna", "candwins": [{"start": 2, "score": 0.5, "end": 6}]}, "http://www.geonames.org/2111781": {"value": "Nagai", "candwins": [{"start": 4, "score": 0.5, "end": 7}]}, "http://www.geonames.org/1804252": {"value": "Lecheng", "candwins": [{"start": 0, "score": 0.5, "end": 4}]}, "http://www.geonames.org/2518559": {"value": "Elche", "candwins": [{"start": 0, "score": 0.5, "end": 3}]}, "http://www.geonames.org/3247449": {"value": "Aachen", "candwins": [{"start": 0, "score": 0.6, "end": 4}]}, "http://www.geonames.org/774558": {"value": "Chelm", "candwins": [{"start": 0, "score": 0.5, "end": 3}]}, "http://www.geonames.org/5656882": {"value": "Helena", "candwins": [{"start": 1, "score": 0.5, "end": 6}]}, "http://www.geonames.org/1264527": {"value": "Chennai", "candwins": [{"start": 0, "score": 1.0, "end": 7}, {"start": 1, "score": 0.8333333333333334, "end": 7}, {"start": 2, "score": 0.6666666666666666, "end": 7}, {"start": 3, "score": 0.5, "end": 7}]}, "http://www.geonames.org/1253747": {"value": "Unnao", "candwins": [{"start": 3, "score": 0.5, "end": 6}]}}, "document": {"id": 113, "value": "Chennai,,"}, "processtime": "5.65900000001"}
+#
+#
+#     print(recordLinkage(initializeRecordLinkage(json.load(open("config.json"))) ,reformatDocs(test, all_city_dict) , 4, {}, taggingDict, 'jobj', 'raw'))
 
