@@ -90,6 +90,55 @@ def stringDistSmith(strG, strR): # uses smith-waterman method
 #    output format:
 #    {"value": token, "id": id, "covers": [], "tags": []}
 ###
+def getAllTokensGreedy(string, T=-1, dicts={}):
+    if T == -1:
+        T = len(string)
+    args = [x.strip() for x in re.split("[\\s,]", string) if x.strip() != ""]
+    id = 0
+    alltokens = []
+    K = len(args)
+
+    for n in reversed(range(T)):
+        for i in reversed(range(n, K)):
+            token = ""
+            covers = []
+            for j in range(i-n, i+1):
+                token += args[j] + " "
+                covers.append(j)
+            token = token.strip().lower()
+            if token == "":
+                continue
+            tags = []
+
+            jobject = {"value": token, "id": id, "covers": covers, "tags": tags}
+            alltokens.append(jobject)
+            id += 1
+    # tag tokens
+    covered = set()
+    for x in alltokens:
+        flag = False
+        if any(xx in covered for xx in x['covers']):
+            continue
+        tags = []
+        for tag in dicts.keys():
+            if x['value'] in dicts[tag]:
+                flag = True
+                tags.append(tag)
+        x['tags'] += tags
+        if flag:
+            covered.update(x['covers'])
+    for x in alltokens:
+        if len(x['tags']) == 0:
+            x['tags'].append("UNK")
+    return alltokens, K
+
+
+###
+#    This function gets a space separated string of words, and returns
+#    all the possible tokens (length T or shorter) in the string.
+#    output format:
+#    {"value": token, "id": id, "covers": [], "tags": []}
+###
 def getAllTokens(string, T=-1, dicts={}):
     if T == -1:
         T = len(string)
