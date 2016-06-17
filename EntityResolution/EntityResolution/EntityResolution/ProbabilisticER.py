@@ -234,7 +234,7 @@ def scoreCandidates(EV, entry, priorDict, taggingDict, topk, mode):
     maxscore = 0.0
     for ent in recordEntities:
         tempscore = 1.0
-        for x in (EV['allTags'] - ent.keys() - set(["UNK"])):
+        for x in (EV['allTags'] - set(ent.keys()) - set(["UNK"])):
             tempscore *= EV['attributes'][x]['probMissingInRec']
         if tempscore > maxscore:
             maxscore = tempscore
