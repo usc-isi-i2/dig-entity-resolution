@@ -264,7 +264,13 @@ def scoreCandidates(EV, entry, priorDict, taggingDict, topk, mode):
         else:
             prior = 1.0
         score = score * prior * (1.0 - (notcovered if notcovered<10 else 10)/50.0)
-        matching.append({'value': entry['entities'][i]['value'], 'score': float("{0:.4f}".format(score)),
+        reformattedVal = {}
+        for key, val in entry['entities'][i]['value'].items():
+            if type(val) is list:
+                reformattedVal.update({key: val[0]})
+            else:
+                reformattedVal.update({key: val})
+        matching.append({'value': reformattedVal, 'score': float("{0:.4f}".format(score)),
                             'uri': str(candidate['id']), 'leftover':notcovered,
                             'prior': prior})
 
@@ -397,51 +403,51 @@ def recordLinkage(EV, queries, topk, priorDict, taggingDict, inputmode='jobj', e
 #                                     'state': state if type(state) is list else [state],
 #                                     'country': country if type(country) is list else [country]}})
 #     return {'document': jobj['document'], 'entities': candidates, 'processtime': jobj['processtime']}
-
+#
 # if __name__ == "__main__":
-    # Read all dictionaries from disk, do not create
-    # pdict = createGeonamesPriorDict(all_city_dict)
-    # pdictpath = args[0]
-    # tdictpath = ""
-
-    # infile = open("/Users/majid/Downloads/geonames/geo-outgeo/part-00000")
-    # outfile = open("testout", 'w')
-
-    # taggingDict = json.load(open("/Users/majid/dig-entity-resolution/tagging_dict.json"))
-    # print(getAllTokensGreedy("north bay chertt", 3, taggingDict))
-    # exit(0)
-    # all_city_dict = json.load(open("/Users/majid/dig-entity-resolution/all_city_dict.json"))
-
-    # query = "San Francisco Oakland Emeryville Hayward California Outcalls, USA".lower()
-    # candidates = [{'id':"http://www.geonames.org/5397765", 'value': {'city': ['san francisco', 'SF'],
-    #                                                                  'state': ['california', 'ca'],
-    #                                                                  'country':['united states', 'us', 'usa']}},
-    #                 {'id':"http://www.geonames.org/5391959", 'value': {'city': ['oakland', 'ok'],
-    #                                                                    'state': ['california', 'ca'],
-    #                                                                    'country':['united states', 'us', 'usa']}},
-    #                 {'id':"http://www.geonames.org/5337542", 'value': {'city': ['los angeles', 'la'],
-    #                                                                    'state': ['california', 'ca'],
-    #                                                                    'country':['united states', 'us', 'usa']}}
-    # ]
-    # jobj = {"entities": {"http://www.geonames.org/11039049":
-    #                  {"value": "Bandapalli", "candwins": [{"start": 0, "score": 1.0, "end": 8},
-    #                                                       {"start": 1, "score": 0.8888888888888888, "end": 8},
-    #                                                       {"start": 2, "score": 0.7777777777777778, "end": 8},
-    #                                                       {"start": 3, "score": 0.6666666666666666, "end": 8},
-    #                                                       {"start": 4, "score": 0.5555555555555556, "end": 8}]}},
-    # "document": {"id": "123", "value": "Bandapalli,Pradesh,India"}, "processtime": "0.331"}
-    #
-    # candidates = []
-    # for uri in jobj['entities'].keys():
-    #     geoname = all_city_dict[uri]
-    #     city = geoname['name']
-    #     state = geoname['state']
-    #     country = geoname['country']
-    #     candidates.append({'id': uri,
-    #                        'value': {'city': city if type(city) is list else [city],
-    #                                 'state': city if type(state) is list else [state],
-    #                                 'country': city if type(country) is list else [country]}})
-    # for line in infile:
-    #     print(line)
-    #     outfile.write(json.dumps(recordLinkage(initializeRecordLinkage(json.load(open("config.json"))) ,reformatDocs(json.loads(line), all_city_dict) , 4, {}, taggingDict, 'jobj', 'raw')) + "\n")
+#     # Read all dictionaries from disk, do not create
+#     # pdict = createGeonamesPriorDict(all_city_dict)
+#     # pdictpath = args[0]
+#     # tdictpath = ""
+#
+#     infile = open("/Users/majid/Downloads/geonames/geo-outgeo/part-00000")
+#     outfile = open("testout", 'w')
+#
+#     taggingDict = json.load(open("/Users/majid/dig-entity-resolution/tagging_dict.json"))
+#     # print(getAllTokensGreedy("north bay chertt", 3, taggingDict))
+#     # exit(0)
+#     all_city_dict = json.load(open("/Users/majid/dig-entity-resolution/all_city_dict.json"))
+#
+#     # query = "San Francisco Oakland Emeryville Hayward California Outcalls, USA".lower()
+#     # candidates = [{'id':"http://www.geonames.org/5397765", 'value': {'city': ['san francisco', 'SF'],
+#     #                                                                  'state': ['california', 'ca'],
+#     #                                                                  'country':['united states', 'us', 'usa']}},
+#     #                 {'id':"http://www.geonames.org/5391959", 'value': {'city': ['oakland', 'ok'],
+#     #                                                                    'state': ['california', 'ca'],
+#     #                                                                    'country':['united states', 'us', 'usa']}},
+#     #                 {'id':"http://www.geonames.org/5337542", 'value': {'city': ['los angeles', 'la'],
+#     #                                                                    'state': ['california', 'ca'],
+#     #                                                                    'country':['united states', 'us', 'usa']}}
+#     # ]
+#     # jobj = {"entities": {"http://www.geonames.org/11039049":
+#     #                  {"value": "Bandapalli", "candwins": [{"start": 0, "score": 1.0, "end": 8},
+#     #                                                       {"start": 1, "score": 0.8888888888888888, "end": 8},
+#     #                                                       {"start": 2, "score": 0.7777777777777778, "end": 8},
+#     #                                                       {"start": 3, "score": 0.6666666666666666, "end": 8},
+#     #                                                       {"start": 4, "score": 0.5555555555555556, "end": 8}]}},
+#     # "document": {"id": "123", "value": "Bandapalli,Pradesh,India"}, "processtime": "0.331"}
+#     #
+#     # candidates = []
+#     # for uri in jobj['entities'].keys():
+#     #     geoname = all_city_dict[uri]
+#     #     city = geoname['name']
+#     #     state = geoname['state']
+#     #     country = geoname['country']
+#     #     candidates.append({'id': uri,
+#     #                        'value': {'city': city if type(city) is list else [city],
+#     #                                 'state': city if type(state) is list else [state],
+#     #                                 'country': city if type(country) is list else [country]}})
+#     for line in infile:
+#         print(line)
+#         outfile.write(json.dumps(recordLinkage(initializeRecordLinkage(json.load(open("config.json"))) ,reformatDocs(json.loads(line), all_city_dict) , 4, {}, taggingDict, 'jobj', 'raw')) + "\n")
 
