@@ -267,7 +267,10 @@ def scoreCandidates(EV, entry, priorDict, taggingDict, topk, mode):
         reformattedVal = {}
         for key, val in entry['entities'][i]['value'].items():
             if type(val) is list:
-                reformattedVal.update({key: val[0]})
+                if len(val) == 0:
+                    reformattedVal.update({key: ""})
+                else:
+                    reformattedVal.update({key: val[0]})
             else:
                 reformattedVal.update({key: val})
         matching.append({'value': reformattedVal, 'score': float("{0:.4f}".format(score)),
